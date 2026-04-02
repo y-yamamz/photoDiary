@@ -1,0 +1,426 @@
+import { useState } from 'react';
+import {
+  Box, IconButton, Typography, Chip, Divider, Button,
+  TextField, Select, MenuItem, FormControl, InputLabel,
+  Dialog, DialogTitle, DialogContent, DialogActions,
+  Tooltip, CircularProgress,
+} from '@mui/material';
+import CloseIcon from '@mui/icons-material/Close';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import CheckIcon from '@mui/icons-material/Check';
+import LocationOnIcon from '@mui/icons-material/LocationOn';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import FolderSpecialIcon from '@mui/icons-material/FolderSpecial';
+import type { Photo, Group } from '../types';
+import { lightboxOverlaySx } from '../styles/albumSx';
+import { formatDate } from '../../../shared/utils';
+import { toChipStyle } from '../utils/mockData';
+import { GlassCard } from '../../../shared/components/GlassCard';
+import { alpha } from '@mui/material/styles';
+
+interface EditForm {
+  description: string;
+  location: string;
+  takenAt: string;
+  groupId: number | '';
+}
+
+interface Props {
+  photo: Photo;
+  group?: Group;
+  groups: Group[];
+  onClose: () => void;
+  onUpdate: (updated: Photo) => void;
+  onDelete: (photoId: number) => void;
+}
+
+export const PhotoLightbox = ({ photo, group, groups, onClose, onUpdate, onDelete }: Props) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [form, setForm] = useState<EditForm>({
+    description: photo.description ?? '',
+    location: photo.location ?? '',
+    takenAt: photo.takenAt ? photo.takenAt.slice(0, 16) : '',
+    groupId: photo.groupId ?? '',
+  });
+
+  const startEdit = () => {
+    setForm({
+      description: photo.description ?? '',
+      location: photo.location ?? '',
+      takenAt: photo.takenAt ? photo.takenAt.slice(0, 16) : '',
+      groupId: photo.groupId ?? '',
+    });
+    setIsEditing(true);
+  };
+
+  const cancelEdit = () => setIsEditing(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    await new Promise((r) => setTimeout(r, 400)); // モックディレイ
+    onUpdate({
+      ...photo,
+      description: form.description || undefined,
+      location: form.location || undefined,
+      takenAt: form.takenAt ? `${form.takenAt}:00` : photo.takenAt,
+      groupId: form.groupId !== '' ? form.groupId : undefined,
+    });
+    setIsEditing(false);
+    setSaving(false);
+  };
+
+  const handleDelete = () => {
+    onDelete(photo.photoId);
+    setDeleteOpen(false);
+    onClose();
+  };
+
+  return (
+    <>
+      <Box sx={lightboxOverlaySx} onClick={onClose}>
+        <Box
+          sx={{ display: 'flex', gap: 2, maxWidth: '90vw', maxHeight: '90vh', p: 2 }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* 画像エリア */}
+          <Box
+            sx={{
+              position: 'relative',
+              maxHeight: '85vh',
+              borderRadius: 3,
+              overflow: 'hidden',
+              boxShadow: `0 24px 64px ${alpha('#000', 0.7)}`,
+              flexShrink: 0,
+            }}
+          >
+            <Box
+              component="img"
+              src={photo.filePath}
+              alt={photo.description}
+              sx={{ maxHeight: '85vh', maxWidth: '60vw', objectFit: 'contain', display: 'block' }}
+            />
+            <IconButton
+              onClick={onClose}
+              sx={{
+                position: 'absolute',
+                top: 12,
+                right: 12,
+                background: alpha('#000', 0.5),
+                color: 'white',
+                '&:hover': { background: alpha('#7c3aed', 0.7) },
+              }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </Box>
+
+          {/* 詳細パネル */}
+          <GlassCard
+            sx={{
+              width: 300,
+              p: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              overflowY: 'auto',
+              flexShrink: 0,
+            }}
+          >
+            {/* パネルヘッダー */}
+            <Box
+              sx={{
+                p: '12px 16px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                borderBottom: `1px solid ${alpha('#a78bfa', 0.12)}`,
+              }}
+            >
+              <Typography variant="subtitle2" fontWeight={700} color="text.secondary">
+                {isEditing ? '写真を編集' : '写真の詳細'}
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 0.5 }}>
+                {!isEditing ? (
+                  <>
+                    <Tooltip title="編集">
+                      <IconButton
+                        size="small"
+                        onClick={startEdit}
+                        sx={{
+                          color: '#a78bfa',
+                          '&:hover': { background: alpha('#7c3aed', 0.15) },
+                        }}
+                      >
+                        <EditIcon sx={{ fontSize: 17 }} />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="削除">
+                      <IconButton
+                        size="small"
+                        onClick={() => setDeleteOpen(true)}
+                        sx={{
+                          color: '#f87171',
+                          '&:hover': { background: alpha('#ef4444', 0.15) },
+                        }}
+                      >
+                        <DeleteIcon sx={{ fontSize: 17 }} />
+                      </IconButton>
+                    </Tooltip>
+                  </>
+                ) : (
+                  <>
+                    <Tooltip title="保存">
+                      <IconButton
+                        size="small"
+                        onClick={handleSave}
+                        disabled={saving}
+                        sx={{ color: '#34d399', '&:hover': { background: alpha('#10b981', 0.15) } }}
+                      >
+                        {saving ? <CircularProgress size={15} color="inherit" /> : <CheckIcon sx={{ fontSize: 17 }} />}
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="キャンセル">
+                      <IconButton
+                        size="small"
+                        onClick={cancelEdit}
+                        sx={{ color: 'text.secondary' }}
+                      >
+                        <CloseIcon sx={{ fontSize: 17 }} />
+                      </IconButton>
+                    </Tooltip>
+                  </>
+                )}
+              </Box>
+            </Box>
+
+            {/* パネルボディ */}
+            <Box sx={{ p: 2, flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {isEditing ? (
+                /* ── 編集フォーム ── */
+                <>
+                  <TextField
+                    label="説明"
+                    multiline
+                    rows={3}
+                    size="small"
+                    value={form.description}
+                    onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                    fullWidth
+                  />
+                  <TextField
+                    label="撮影場所"
+                    size="small"
+                    value={form.location}
+                    onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
+                    placeholder="例：東京タワー"
+                    fullWidth
+                    InputProps={{
+                      startAdornment: <LocationOnIcon sx={{ mr: 0.5, fontSize: 16, color: 'text.secondary' }} />,
+                    }}
+                  />
+                  <TextField
+                    label="撮影日時"
+                    type="datetime-local"
+                    size="small"
+                    value={form.takenAt}
+                    onChange={(e) => setForm((f) => ({ ...f, takenAt: e.target.value }))}
+                    InputLabelProps={{ shrink: true }}
+                    fullWidth
+                  />
+                  <FormControl size="small" fullWidth>
+                    <InputLabel>グループ</InputLabel>
+                    <Select
+                      label="グループ"
+                      value={form.groupId}
+                      onChange={(e) => setForm((f) => ({ ...f, groupId: e.target.value as number | '' }))}
+                    >
+                      <MenuItem value="">なし</MenuItem>
+                      {groups.map((g) => (
+                        <MenuItem key={g.groupId} value={g.groupId}>{g.groupName}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+
+                  <Divider sx={{ opacity: 0.2 }} />
+
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Button
+                      variant="contained"
+                      fullWidth
+                      size="small"
+                      onClick={handleSave}
+                      disabled={saving}
+                      startIcon={saving ? <CircularProgress size={14} color="inherit" /> : <CheckIcon />}
+                      sx={{
+                        background: 'linear-gradient(135deg, #7c3aed, #a78bfa)',
+                        boxShadow: `0 4px 16px ${alpha('#7c3aed', 0.4)}`,
+                      }}
+                    >
+                      保存
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={cancelEdit}
+                      sx={{ borderColor: alpha('#a78bfa', 0.3), color: 'text.secondary', minWidth: 64 }}
+                    >
+                      戻る
+                    </Button>
+                  </Box>
+                </>
+              ) : (
+                /* ── 詳細表示 ── */
+                <>
+                  <Typography variant="h6" fontWeight={700} color="text.primary" sx={{ lineHeight: 1.4 }}>
+                    {photo.description ?? '無題'}
+                  </Typography>
+
+                  <Divider sx={{ opacity: 0.3 }} />
+
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <AccessTimeIcon sx={{ fontSize: 16, color: '#a78bfa', flexShrink: 0 }} />
+                      <Typography variant="body2" color="text.secondary">
+                        {formatDate(photo.takenAt ?? photo.createdAt, 'YYYY年MM月DD日 HH:mm')}
+                      </Typography>
+                    </Box>
+                    {photo.location && (
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <LocationOnIcon sx={{ fontSize: 16, color: '#f472b6', flexShrink: 0 }} />
+                        <Typography variant="body2" color="text.secondary">
+                          {photo.location}
+                        </Typography>
+                      </Box>
+                    )}
+                    {group && (
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <FolderSpecialIcon sx={{ fontSize: 16, color: '#34d399', flexShrink: 0 }} />
+                        <Typography variant="body2" color="text.secondary">
+                          {group.groupName}
+                        </Typography>
+                      </Box>
+                    )}
+                  </Box>
+
+                  {photo.tags && photo.tags.length > 0 && (
+                    <>
+                      <Divider sx={{ opacity: 0.3 }} />
+                      <Box>
+                        <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+                          タグ
+                        </Typography>
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8 }}>
+                          {photo.tags.map((tag) => {
+                            const style = toChipStyle(tag.tagName);
+                            return (
+                              <Chip
+                                key={tag.tagId}
+                                label={tag.tagName}
+                                size="small"
+                                sx={{
+                                  background: style.bg,
+                                  color: style.color,
+                                  border: `1px solid ${alpha(style.color, 0.3)}`,
+                                }}
+                              />
+                            );
+                          })}
+                        </Box>
+                      </Box>
+                    </>
+                  )}
+
+                  {photo.fileName && (
+                    <>
+                      <Divider sx={{ opacity: 0.3 }} />
+                      <Typography variant="caption" color="text.disabled">
+                        {photo.fileName}
+                      </Typography>
+                    </>
+                  )}
+
+                  {/* 下部アクションボタン */}
+                  <Box sx={{ mt: 'auto', pt: 1, display: 'flex', gap: 1 }}>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      fullWidth
+                      startIcon={<EditIcon />}
+                      onClick={startEdit}
+                      sx={{
+                        borderColor: alpha('#a78bfa', 0.4),
+                        color: '#c4b5fd',
+                        '&:hover': { borderColor: '#a78bfa', background: alpha('#7c3aed', 0.1) },
+                      }}
+                    >
+                      編集
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      fullWidth
+                      startIcon={<DeleteIcon />}
+                      onClick={() => setDeleteOpen(true)}
+                      sx={{
+                        borderColor: alpha('#f87171', 0.4),
+                        color: '#f87171',
+                        '&:hover': { borderColor: '#f87171', background: alpha('#ef4444', 0.1) },
+                      }}
+                    >
+                      削除
+                    </Button>
+                  </Box>
+                </>
+              )}
+            </Box>
+          </GlassCard>
+        </Box>
+      </Box>
+
+      {/* 削除確認ダイアログ */}
+      <Dialog
+        open={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        onClick={(e) => e.stopPropagation()}
+        PaperProps={{
+          sx: {
+            background: 'rgba(20,15,50,0.97)',
+            backdropFilter: 'blur(24px)',
+            border: `1px solid ${alpha('#f87171', 0.3)}`,
+            borderRadius: 3,
+            minWidth: 340,
+          },
+        }}
+      >
+        <DialogTitle sx={{ color: '#f87171', pb: 1 }}>この写真を削除しますか？</DialogTitle>
+        <DialogContent>
+          <Typography color="text.secondary" variant="body2">
+            「{photo.description ?? photo.fileName ?? '無題'}」を削除します。
+            この操作は元に戻せません。
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ p: 2, gap: 1 }}>
+          <Button
+            onClick={() => setDeleteOpen(false)}
+            sx={{ color: 'text.secondary' }}
+          >
+            キャンセル
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleDelete}
+            startIcon={<DeleteIcon />}
+            sx={{
+              background: 'linear-gradient(135deg, #dc2626, #f87171)',
+              boxShadow: `0 4px 16px ${alpha('#dc2626', 0.4)}`,
+            }}
+          >
+            削除する
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
+  );
+};
