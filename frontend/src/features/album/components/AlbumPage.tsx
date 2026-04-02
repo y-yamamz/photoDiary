@@ -1,6 +1,6 @@
 import { Box, Typography, Dialog, DialogTitle, DialogContent, DialogActions, Button } from '@mui/material';
 import { Grid } from '@mui/material';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CollectionsIcon from '@mui/icons-material/Collections';
@@ -12,6 +12,7 @@ import { PhotoCard } from './PhotoCard';
 import { PhotoLightbox } from './PhotoLightbox';
 import { BulkActionBar } from './BulkActionBar';
 import { BulkEditDialog } from './BulkEditDialog';
+import { downloadPhotosAsZip } from '../utils/downloadUtils';
 import { sidebarSx, photoGridSx } from '../styles/albumSx';
 import { alpha } from '@mui/material/styles';
 
@@ -20,6 +21,8 @@ export const AlbumPage = () => {
   const { logout } = useAuth();
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState<{ done: number; total: number } | null>(null);
 
   const {
     photos,
@@ -54,6 +57,18 @@ export const AlbumPage = () => {
     deletePhotos(selectedIds);
     setBulkDeleteOpen(false);
   };
+
+  const handleBulkDownload = useCallback(async () => {
+    const targets = filteredPhotos.filter((p) => selectedIds.has(p.photoId));
+    if (targets.length === 0) return;
+    setDownloading(true);
+    setDownloadProgress({ done: 0, total: targets.length });
+    await downloadPhotosAsZip(targets, (done, total) => {
+      setDownloadProgress({ done, total });
+    });
+    setDownloading(false);
+    setDownloadProgress(null);
+  }, [filteredPhotos, selectedIds]);
 
   return (
     <Box sx={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0a0a1a 0%, #0d0b2e 50%, #130a1f 100%)' }}>
@@ -168,7 +183,10 @@ export const AlbumPage = () => {
           onClearSelection={clearSelection}
           onDelete={() => setBulkDeleteOpen(true)}
           onBulkEdit={() => setBulkEditOpen(true)}
+          onDownload={handleBulkDownload}
           onExit={exitSelectMode}
+          downloading={downloading}
+          downloadProgress={downloadProgress}
         />
       )}
 
