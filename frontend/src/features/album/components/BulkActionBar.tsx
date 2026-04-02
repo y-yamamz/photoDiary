@@ -1,5 +1,6 @@
 import { Box, Typography, Button, IconButton, Tooltip } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
 import CheckBoxIcon from '@mui/icons-material/CheckBox';
 import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
 import CloseIcon from '@mui/icons-material/Close';
@@ -12,6 +13,7 @@ interface Props {
   onSelectAll: () => void;
   onClearSelection: () => void;
   onDelete: () => void;
+  onBulkEdit: () => void;
   onExit: () => void;
 }
 
@@ -21,6 +23,7 @@ export const BulkActionBar = ({
   onSelectAll,
   onClearSelection,
   onDelete,
+  onBulkEdit,
   onExit,
 }: Props) => {
   const allSelected = selectedCount === totalCount && totalCount > 0;
@@ -50,6 +53,28 @@ export const BulkActionBar = ({
           '写真を選択してください'
         )}
       </Typography>
+
+      {/* 一括編集ボタン */}
+      <Button
+        variant="contained"
+        size="small"
+        startIcon={<EditIcon />}
+        disabled={selectedCount === 0}
+        onClick={onBulkEdit}
+        sx={{
+          borderRadius: 99,
+          background: selectedCount > 0
+            ? 'linear-gradient(135deg, #7c3aed, #a78bfa)'
+            : undefined,
+          boxShadow: selectedCount > 0 ? `0 4px 16px ${alpha('#7c3aed', 0.4)}` : undefined,
+          px: 2,
+          '&:hover': {
+            boxShadow: `0 4px 20px ${alpha('#7c3aed', 0.6)}`,
+          },
+        }}
+      >
+        一括編集
+      </Button>
 
       {/* 削除ボタン */}
       <Button

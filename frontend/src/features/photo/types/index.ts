@@ -1,5 +1,5 @@
 export interface UploadFormValues {
-  file: File | null;
+  files: File[];
   groupId: number | '';
   takenAt: string;
   location: string;
@@ -7,7 +7,7 @@ export interface UploadFormValues {
 }
 
 export interface UploadState {
-  preview: string | null;
+  previews: string[];
   uploading: boolean;
   progress: number;
   success: boolean;

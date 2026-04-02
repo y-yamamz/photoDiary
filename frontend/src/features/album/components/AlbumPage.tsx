@@ -11,6 +11,7 @@ import { DateTree } from './DateTree';
 import { PhotoCard } from './PhotoCard';
 import { PhotoLightbox } from './PhotoLightbox';
 import { BulkActionBar } from './BulkActionBar';
+import { BulkEditDialog } from './BulkEditDialog';
 import { sidebarSx, photoGridSx } from '../styles/albumSx';
 import { alpha } from '@mui/material/styles';
 
@@ -18,6 +19,7 @@ export const AlbumPage = () => {
   const navigate = useNavigate();
   const { logout } = useAuth();
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkEditOpen, setBulkEditOpen] = useState(false);
 
   const {
     photos,
@@ -45,6 +47,7 @@ export const AlbumPage = () => {
     clearSelection,
     deletePhotos,
     updatePhoto,
+    bulkUpdatePhotos,
   } = useAlbum();
 
   const handleBulkDelete = () => {
@@ -164,9 +167,18 @@ export const AlbumPage = () => {
           onSelectAll={() => selectAll(filteredPhotos.map((p) => p.photoId))}
           onClearSelection={clearSelection}
           onDelete={() => setBulkDeleteOpen(true)}
+          onBulkEdit={() => setBulkEditOpen(true)}
           onExit={exitSelectMode}
         />
       )}
+
+      {/* 一括編集ダイアログ */}
+      <BulkEditDialog
+        open={bulkEditOpen}
+        selectedCount={selectedIds.size}
+        onClose={() => setBulkEditOpen(false)}
+        onApply={(patch) => bulkUpdatePhotos(selectedIds, patch)}
+      />
 
       {/* 一括削除確認ダイアログ */}
       <Dialog

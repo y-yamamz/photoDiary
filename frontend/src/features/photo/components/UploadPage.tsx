@@ -24,13 +24,20 @@ export const UploadPage = () => {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const { form, state, groups, setFile, updateField, submit, reset } = usePhotoUpload();
+  const { form, state, groups, setFiles, removeFile, updateField, submit, reset } = usePhotoUpload();
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    const file = e.dataTransfer.files[0];
-    if (file) setFile(file);
+    const dropped = Array.from(e.dataTransfer.files);
+    if (dropped.length > 0) setFiles(dropped);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = Array.from(e.target.files ?? []);
+    if (selected.length > 0) setFiles(selected);
+    // 同じファイルを再選択できるようリセット
+    e.target.value = '';
   };
 
   return (
@@ -50,96 +57,127 @@ export const UploadPage = () => {
           {/* 左：ファイル選択 */}
           <GlassCard sx={{ flex: '1 1 320px', p: 3 }}>
             <Typography variant="subtitle2" fontWeight={600} color="text.secondary" sx={{ mb: 2 }}>
-              ファイルを選択
+              ファイルを選択（複数可）
             </Typography>
 
             {/* ドロップゾーン */}
-            {!state.preview ? (
-              <Box
-                sx={dropzoneSx(isDragging)}
-                onClick={() => fileInputRef.current?.click()}
-                onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-                onDragLeave={() => setIsDragging(false)}
-                onDrop={handleDrop}
+            <Box
+              sx={dropzoneSx(isDragging)}
+              onClick={() => fileInputRef.current?.click()}
+              onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={handleDrop}
+            >
+              <CloudUploadIcon sx={{ fontSize: 48, color: alpha('#a78bfa', 0.6), mb: 1 }} />
+              <Typography variant="body1" fontWeight={600} color="text.secondary">
+                クリックまたはドラッグ＆ドロップ
+              </Typography>
+              <Typography variant="caption" color="text.disabled" sx={{ mt: 0.5, display: 'block' }}>
+                JPEG / PNG / WebP / HEIC（最大 20MB / 枚）・複数選択可
+              </Typography>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<ImageIcon />}
+                sx={{ mt: 2, borderColor: alpha('#a78bfa', 0.4), color: '#c4b5fd' }}
               >
-                <CloudUploadIcon sx={{ fontSize: 48, color: alpha('#a78bfa', 0.6), mb: 1 }} />
-                <Typography variant="body1" fontWeight={600} color="text.secondary">
-                  クリックまたはドラッグ＆ドロップ
-                </Typography>
-                <Typography variant="caption" color="text.disabled" sx={{ mt: 0.5, display: 'block' }}>
-                  JPEG / PNG / WebP / HEIC（最大 20MB）
-                </Typography>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  startIcon={<ImageIcon />}
-                  sx={{ mt: 2, borderColor: alpha('#a78bfa', 0.4), color: '#c4b5fd' }}
-                >
-                  ファイルを参照
-                </Button>
-              </Box>
-            ) : (
-              <Box sx={{ position: 'relative', borderRadius: 2, overflow: 'hidden' }}>
-                <Box
-                  component="img"
-                  src={state.preview}
-                  alt="preview"
-                  sx={{ width: '100%', maxHeight: 300, objectFit: 'cover', display: 'block', borderRadius: 2 }}
-                />
-                <Tooltip title="削除">
-                  <IconButton
-                    size="small"
-                    onClick={() => setFile(null)}
-                    sx={{
-                      position: 'absolute',
-                      top: 8,
-                      right: 8,
-                      background: alpha('#000', 0.6),
-                      color: '#f87171',
-                      '&:hover': { background: alpha('#dc2626', 0.7) },
-                    }}
-                  >
-                    <DeleteIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
-                {form.file && (
-                  <Box
-                    sx={{
-                      position: 'absolute',
-                      bottom: 0,
-                      left: 0,
-                      right: 0,
-                      background: 'linear-gradient(transparent, rgba(0,0,0,0.8))',
-                      p: 1.5,
-                    }}
-                  >
-                    <Chip
-                      label={form.file.name}
-                      size="small"
-                      icon={<ImageIcon />}
-                      sx={{ background: alpha('#1e1b4b', 0.8), color: '#c4b5fd', maxWidth: '100%' }}
-                    />
-                    <Typography variant="caption" color="text.disabled" sx={{ ml: 1 }}>
-                      {formatFileSize(form.file.size)}
-                    </Typography>
-                  </Box>
-                )}
-              </Box>
-            )}
+                ファイルを参照
+              </Button>
+            </Box>
 
             <input
               ref={fileInputRef}
               type="file"
               accept="image/jpeg,image/png,image/webp,image/heic"
+              multiple
               style={{ display: 'none' }}
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              onChange={handleFileChange}
             />
+
+            {/* 選択済みファイル一覧 */}
+            {form.files.length > 0 && (
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+                  選択中: {form.files.length} 枚
+                </Typography>
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))',
+                    gap: 1,
+                    maxHeight: 220,
+                    overflowY: 'auto',
+                  }}
+                >
+                  {state.previews.map((src, i) => (
+                    <Box key={i} sx={{ position: 'relative', borderRadius: 1.5, overflow: 'hidden', aspectRatio: '1' }}>
+                      <Box
+                        component="img"
+                        src={src}
+                        alt={form.files[i]?.name}
+                        sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                      />
+                      <Tooltip title="削除">
+                        <IconButton
+                          size="small"
+                          onClick={(e) => { e.stopPropagation(); removeFile(i); }}
+                          sx={{
+                            position: 'absolute',
+                            top: 2,
+                            right: 2,
+                            width: 20,
+                            height: 20,
+                            background: alpha('#000', 0.7),
+                            color: '#f87171',
+                            '&:hover': { background: alpha('#dc2626', 0.8) },
+                          }}
+                        >
+                          <DeleteIcon sx={{ fontSize: 12 }} />
+                        </IconButton>
+                      </Tooltip>
+                      <Box
+                        sx={{
+                          position: 'absolute',
+                          bottom: 0,
+                          left: 0,
+                          right: 0,
+                          background: 'linear-gradient(transparent, rgba(0,0,0,0.75))',
+                          px: 0.5,
+                          pb: 0.5,
+                        }}
+                      >
+                        <Typography
+                          variant="caption"
+                          sx={{ color: '#e2e8f0', fontSize: 9, lineHeight: 1.2, display: 'block', wordBreak: 'break-all' }}
+                        >
+                          {formatFileSize(form.files[i]?.size ?? 0)}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  ))}
+                </Box>
+
+                {/* ファイル名チップ一覧 */}
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 1.5 }}>
+                  {form.files.map((f, i) => (
+                    <Chip
+                      key={i}
+                      label={f.name}
+                      size="small"
+                      icon={<ImageIcon />}
+                      onDelete={() => removeFile(i)}
+                      sx={{ background: alpha('#1e1b4b', 0.8), color: '#c4b5fd', maxWidth: 180 }}
+                    />
+                  ))}
+                </Box>
+              </Box>
+            )}
 
             {/* プログレスバー */}
             {state.uploading && (
               <Box sx={{ mt: 2 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                  <Typography variant="caption" color="text.secondary">アップロード中...</Typography>
+                  <Typography variant="caption" color="text.secondary">アップロード中... ({form.files.length} 枚)</Typography>
                   <Typography variant="caption" color="#a78bfa">{state.progress}%</Typography>
                 </Box>
                 <LinearProgress variant="determinate" value={state.progress} sx={progressBarSx} />
@@ -147,7 +185,7 @@ export const UploadPage = () => {
             )}
 
             {state.error && (
-              <Alert severity="error" sx={{ mt: 2, borderRadius: 2 }}>{state.error}</Alert>
+              <Alert severity="error" sx={{ mt: 2, borderRadius: 2, whiteSpace: 'pre-line' }}>{state.error}</Alert>
             )}
             {state.success && (
               <Alert
@@ -160,11 +198,17 @@ export const UploadPage = () => {
             )}
           </GlassCard>
 
-          {/* 右：メタ情報 */}
+          {/* 右：メタ情報（一括適用） */}
           <GlassCard sx={{ flex: '1 1 320px', p: 3 }}>
-            <Typography variant="subtitle2" fontWeight={600} color="text.secondary" sx={{ mb: 2 }}>
+            <Typography variant="subtitle2" fontWeight={600} color="text.secondary" sx={{ mb: 0.5 }}>
               写真情報
             </Typography>
+            {form.files.length > 1 && (
+              <Typography variant="caption" color="#a78bfa" sx={{ display: 'block', mb: 2 }}>
+                選択した {form.files.length} 枚すべてに適用されます
+              </Typography>
+            )}
+            {form.files.length <= 1 && <Box sx={{ mb: 2 }} />}
 
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
               <FormControl fullWidth size="small">
@@ -222,7 +266,7 @@ export const UploadPage = () => {
                   variant="contained"
                   fullWidth
                   onClick={submit}
-                  disabled={!form.file || state.uploading}
+                  disabled={form.files.length === 0 || state.uploading}
                   sx={{
                     py: 1.5,
                     background: 'linear-gradient(135deg, #7c3aed, #a78bfa)',
@@ -231,7 +275,11 @@ export const UploadPage = () => {
                   }}
                   startIcon={state.uploading ? <CircularProgress size={18} color="inherit" /> : <AutoAwesomeIcon />}
                 >
-                  {state.uploading ? 'アップロード中...' : '登録する'}
+                  {state.uploading
+                    ? 'アップロード中...'
+                    : form.files.length > 1
+                      ? `${form.files.length} 枚を一括登録`
+                      : '登録する'}
                 </Button>
                 <Button
                   variant="outlined"

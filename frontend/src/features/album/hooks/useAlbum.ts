@@ -57,6 +57,14 @@ export const useAlbum = () => {
     setSelectedPhoto(updated);
   }, []);
 
+  const bulkUpdatePhotos = useCallback((ids: Set<number>, patch: { location?: string; description?: string }) => {
+    setPhotos((prev) =>
+      prev.map((p) => (ids.has(p.photoId) ? { ...p, ...patch } : p))
+    );
+    setSelectedIds(new Set());
+    setIsSelectMode(false);
+  }, []);
+
   // ── フィルター済み ─────────────────────────────────────
   const filteredPhotos = useMemo(() => {
     return photos.filter((p) => {
@@ -144,5 +152,6 @@ export const useAlbum = () => {
     // CRUD
     deletePhotos,
     updatePhoto,
+    bulkUpdatePhotos,
   };
 };
