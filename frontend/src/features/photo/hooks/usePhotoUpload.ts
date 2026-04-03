@@ -4,6 +4,7 @@ import { validateImageFile, createPreviewUrl, revokePreviewUrl } from '../utils/
 import { albumApi } from '../../album/api/albumApi';
 import { photoApi } from '../api/photoApi';
 import { extractApiError } from '../../../shared/api/apiClient';
+import { logger } from '../../../shared/utils/logger';
 import type { Group } from '../../../shared/types';
 
 const defaultForm = (): UploadFormValues => ({
@@ -101,6 +102,7 @@ export const usePhotoUpload = () => {
       setState((s) => ({ ...s, uploading: false, success: true, previews: [] }));
       setForm(defaultForm());
     } catch (err) {
+      logger.error('写真のアップロードに失敗しました', 'usePhotoUpload', err);
       setState((s) => ({
         ...s,
         uploading: false,

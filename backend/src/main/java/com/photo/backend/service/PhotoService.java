@@ -100,8 +100,9 @@ public class PhotoService {
     // ── 単体削除 ────────────────────────────────────────────────
 
     public void delete(Long userId, Long photoId) {
-        getOwnedPhoto(userId, photoId); // 所有確認
+        Photos photo = getOwnedPhoto(userId, photoId); // 所有確認
         photosMapper.deleteByPrimaryKey(photoId);
+        deletePhysicalFile(photo.getFilePath());
     }
 
     // ── 一括削除 ────────────────────────────────────────────────
@@ -110,7 +111,16 @@ public class PhotoService {
         if (request.getPhotoIds() == null || request.getPhotoIds().isEmpty()) {
             throw new AppException(HttpStatus.BAD_REQUEST, "削除対象のIDが指定されていません");
         }
-        return photosCustomMapper.bulkDeleteByIds(userId, request.getPhotoIds());
+        // DB削除前にファイルパスを収集（自分の写真のみ）
+        List<String> filePaths = request.getPhotoIds().stream()
+                .map(photosMapper::selectByPrimaryKey)
+                .filter(p -> p != null && userId.equals(p.getUserId()))
+                .map(Photos::getFilePath)
+                .collect(java.util.stream.Collectors.toList());
+
+        int count = photosCustomMapper.bulkDeleteByIds(userId, request.getPhotoIds());
+        filePaths.forEach(this::deletePhysicalFile);
+        return count;
     }
 
     // ── 一括更新 ────────────────────────────────────────────────
@@ -151,6 +161,23 @@ public class PhotoService {
             return "/images/" + userId + "/" + year + "/" + month + "/" + uuid + ext;
         } catch (IOException e) {
             throw new AppException(HttpStatus.INTERNAL_SERVER_ERROR, "ファイルの保存に失敗しました");
+        }
+    }
+
+    /**
+     * DBの filePath（例: /images/1/2026/04/uuid.png）からストレージ上の物理ファイルを削除する。
+     * 削除失敗はログ出力のみとし、DB削除処理は継続する。
+     */
+    private void deletePhysicalFile(String filePath) {
+        if (filePath == null) return;
+        // /images/{userId}/... → {storagePath}/{userId}/...
+        String relative = filePath.replaceFirst("^/images/", "");
+        Path physical = Paths.get(storagePath).resolve(relative);
+        try {
+            Files.deleteIfExists(physical);
+        } catch (IOException e) {
+            // ファイル削除失敗時もDB削除は完了しているため処理継続
+            System.err.println("物理ファイルの削除に失敗しました: " + physical + " / " + e.getMessage());
         }
     }
 

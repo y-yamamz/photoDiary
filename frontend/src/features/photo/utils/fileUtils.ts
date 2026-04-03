@@ -3,10 +3,16 @@ import { formatFileSize } from '../../../shared/utils';
 export { formatFileSize };
 
 export const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
+const ACCEPTED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.heic'];
 export const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
 
+const getExtension = (name: string) =>
+  name.slice(name.lastIndexOf('.')).toLowerCase();
+
 export const validateImageFile = (file: File): string | null => {
-  if (!ACCEPTED_TYPES.includes(file.type)) {
+  const byType = ACCEPTED_TYPES.includes(file.type);
+  const byExt  = ACCEPTED_EXTENSIONS.includes(getExtension(file.name));
+  if (!byType && !byExt) {
     return 'JPEG / PNG / WebP / HEIC 形式のみ対応しています';
   }
   if (file.size > MAX_FILE_SIZE) {

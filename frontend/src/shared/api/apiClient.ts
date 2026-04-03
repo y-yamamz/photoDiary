@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { logger } from '../utils/logger';
 
 const TOKEN_KEY = 'photo_diary_token';
 const USER_KEY  = 'photo_diary_user';
@@ -13,7 +14,6 @@ const USER_KEY  = 'photo_diary_user';
  */
 export const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL ?? '',
-  headers: { 'Content-Type': 'application/json' },
 });
 
 apiClient.interceptors.request.use((config) => {
@@ -27,7 +27,21 @@ apiClient.interceptors.request.use((config) => {
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const status: number | undefined = error.response?.status;
+    const url: string = error.config?.url ?? '';
+    const method: string = (error.config?.method ?? '').toUpperCase();
+
+    logger.error(
+      `API ${method} ${url} → ${status ?? 'network error'}`,
+      'apiClient',
+      {
+        status,
+        message: error.response?.data?.message,
+        stack: error.stack,
+      },
+    );
+
+    if (status === 401) {
       localStorage.removeItem(TOKEN_KEY);
       localStorage.removeItem(USER_KEY);
       window.location.href = '/login';

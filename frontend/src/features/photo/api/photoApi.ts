@@ -6,7 +6,6 @@ export const photoApi = {
   upload: (formData: FormData, onProgress?: (pct: number) => void) =>
     apiClient
       .post<ApiResponse<Photo>>('/api/photos', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
         onUploadProgress: (e) => {
           if (e.total && onProgress) onProgress(Math.round((e.loaded / e.total) * 100));
         },
@@ -17,7 +16,6 @@ export const photoApi = {
   bulkUpload: (formData: FormData, onProgress?: (pct: number) => void) =>
     apiClient
       .post<ApiResponse<Photo[]>>('/api/photos/bulk', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
         onUploadProgress: (e) => {
           if (e.total && onProgress) onProgress(Math.round((e.loaded / e.total) * 100));
         },

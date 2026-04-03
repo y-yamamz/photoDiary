@@ -128,7 +128,7 @@
       <include refid="Example_Where_Clause" />
     </if>
   </delete>
-  <insert id="insert" parameterType="com.photo.backend.db.entity.Photos">
+  <insert id="insert" parameterType="com.photo.backend.db.entity.Photos" useGeneratedKeys="true" keyProperty="photoId">
     insert into photos (photo_id, user_id, group_id, 
       file_path, file_name, taken_at, 
       location, sort_order, created_at, 
@@ -138,7 +138,7 @@
       #{location,jdbcType=VARCHAR}, #{sortOrder,jdbcType=INTEGER}, #{createdAt,jdbcType=TIMESTAMP}, 
       #{description,jdbcType=LONGVARCHAR})
   </insert>
-  <insert id="insertSelective" parameterType="com.photo.backend.db.entity.Photos">
+  <insert id="insertSelective" parameterType="com.photo.backend.db.entity.Photos" useGeneratedKeys="true" keyProperty="photoId">
     insert into photos
     <trim prefix="(" suffix=")" suffixOverrides=",">
       <if test="photoId != null">

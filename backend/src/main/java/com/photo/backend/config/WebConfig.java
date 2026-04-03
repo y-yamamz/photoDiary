@@ -6,6 +6,8 @@ import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
+import java.nio.file.Paths;
+
 /**
  * CORS設定とアップロードファイルの静的配信設定。
  */
@@ -29,7 +31,8 @@ public class WebConfig implements WebMvcConfigurer {
      */
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        String location = "file:" + storagePath + "/";
+        String location = Paths.get(storagePath).toUri().toString();
+        if (!location.endsWith("/")) location += "/";
         registry.addResourceHandler("/images/**")
                 .addResourceLocations(location);
     }
