@@ -1,0 +1,21 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "name": "backend Debug",
+      "request": "launch",
+      "mainClass": "com.photo.backend.BackendApplication",
+      "projectName": "backend",
+      "args": "",
+      "vmArgs": "-Dspring.profiles.active=dev"
+    },
+    {
+      "type": "java",
+      "name": "MyBatisGeneratorRunner",
+      "request": "launch",
+      "mainClass": "com.photo.backend.MyBatisGeneratorRunner",
+      "projectName": "backend"
+    }
+  ]
+}
