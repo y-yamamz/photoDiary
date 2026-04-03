@@ -129,12 +129,15 @@ public class PhotoService {
         if (request.getPhotoIds() == null || request.getPhotoIds().isEmpty()) {
             throw new AppException(HttpStatus.BAD_REQUEST, "更新対象のIDが指定されていません");
         }
-        if (request.getLocation() == null && request.getDescription() == null) {
+        if (request.getLocation() == null && request.getDescription() == null
+                && request.getGroupId() == null && request.getTakenAt() == null) {
             throw new AppException(HttpStatus.BAD_REQUEST, "更新するフィールドを指定してください");
         }
+        Date takenAtDate = request.getTakenAt() != null ? parseDatetime(request.getTakenAt()) : null;
         return photosCustomMapper.bulkUpdateByIds(
                 userId, request.getPhotoIds(),
-                request.getLocation(), request.getDescription());
+                request.getLocation(), request.getDescription(),
+                request.getGroupId(), takenAtDate);
     }
 
     // ── private ─────────────────────────────────────────────────
@@ -147,25 +150,26 @@ public class PhotoService {
             LocalDateTime now = LocalDateTime.now();
             String year  = String.format("%04d", now.getYear());
             String month = String.format("%02d", now.getMonthValue());
+            String day   = String.format("%02d", now.getDayOfMonth());
             String ext   = getExtension(file.getOriginalFilename());
             String uuid  = UUID.randomUUID().toString();
 
-            // 保存先ディレクトリ: {storagePath}/{userId}/{yyyy}/{MM}/
-            Path dir = Paths.get(storagePath, userId.toString(), year, month);
+            // 保存先ディレクトリ: {storagePath}/{userId}/{yyyy}/{MM}/{dd}/
+            Path dir = Paths.get(storagePath, userId.toString(), year, month, day);
             Files.createDirectories(dir);
 
             Path dest = dir.resolve(uuid + ext);
             file.transferTo(dest);
 
             // クライアントからアクセスするURLパス
-            return "/images/" + userId + "/" + year + "/" + month + "/" + uuid + ext;
+            return "/images/" + userId + "/" + year + "/" + month + "/" + day + "/" + uuid + ext;
         } catch (IOException e) {
             throw new AppException(HttpStatus.INTERNAL_SERVER_ERROR, "ファイルの保存に失敗しました");
         }
     }
 
     /**
-     * DBの filePath（例: /images/1/2026/04/uuid.png）からストレージ上の物理ファイルを削除する。
+     * DBの filePath（例: /images/1/2026/04/03/uuid.png）からストレージ上の物理ファイルを削除する。
      * 削除失敗はログ出力のみとし、DB削除処理は継続する。
      */
     private void deletePhysicalFile(String filePath) {

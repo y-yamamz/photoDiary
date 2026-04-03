@@ -206,6 +206,7 @@ export const AlbumPage = () => {
       <BulkEditDialog
         open={bulkEditOpen}
         selectedCount={selectedIds.size}
+        groups={groups}
         onClose={() => setBulkEditOpen(false)}
         onApply={(patch) => bulkUpdatePhotos(selectedIds, patch)}
       />

@@ -109,7 +109,7 @@ export const useAlbum = () => {
 
   const bulkUpdatePhotos = useCallback(async (
     ids: Set<number>,
-    patch: { location?: string; description?: string },
+    patch: { location?: string; description?: string; groupId?: number; takenAt?: string },
   ) => {
     try {
       await albumApi.bulkUpdatePhotos(Array.from(ids), patch);

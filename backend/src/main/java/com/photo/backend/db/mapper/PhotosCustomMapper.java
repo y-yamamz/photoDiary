@@ -39,6 +39,8 @@ public interface PhotosCustomMapper {
             @Param("userId") Long userId,
             @Param("ids") List<Long> ids,
             @Param("location") String location,
-            @Param("description") String description
+            @Param("description") String description,
+            @Param("groupId") Long groupId,
+            @Param("takenAt") java.util.Date takenAt
     );
 }

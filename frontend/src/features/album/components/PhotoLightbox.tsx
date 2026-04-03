@@ -17,6 +17,7 @@ import { lightboxOverlaySx } from '../styles/albumSx';
 import { formatDate } from '../../../shared/utils';
 import { toChipStyle } from '../utils/mockData';
 import { GlassCard } from '../../../shared/components/GlassCard';
+import { HeicSafeImage } from '../../../shared/components/HeicSafeImage';
 import { alpha } from '@mui/material/styles';
 
 interface EditForm {
@@ -96,8 +97,7 @@ export const PhotoLightbox = ({ photo, group, groups, onClose, onUpdate, onDelet
               flexShrink: 0,
             }}
           >
-            <Box
-              component="img"
+            <HeicSafeImage
               src={photo.filePath}
               alt={photo.description}
               sx={{ maxHeight: '85vh', maxWidth: '60vw', objectFit: 'contain', display: 'block' }}

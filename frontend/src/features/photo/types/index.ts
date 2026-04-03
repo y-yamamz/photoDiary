@@ -9,6 +9,7 @@ export interface UploadFormValues {
 export interface UploadState {
   previews: string[];
   uploading: boolean;
+  converting: boolean;
   progress: number;
   success: boolean;
   error: string | null;

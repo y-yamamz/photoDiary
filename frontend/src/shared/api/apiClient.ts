@@ -9,7 +9,7 @@ const USER_KEY  = 'photo_diary_user';
  *
  * - ベースURLは環境変数 VITE_API_BASE_URL で切り替え可能
  *   （未設定時は相対パス → Vite dev proxy が /api/* を localhost:8080 へ転送）
- * - リクエストインターセプター: localStorage のトークンを Authorization ヘッダーに自動付与
+ * - リクエストインターセプター: sessionStorage のトークンを Authorization ヘッダーに自動付与
  * - レスポンスインターセプター: 401 はトークンを削除してログイン画面へリダイレクト
  */
 export const apiClient = axios.create({
@@ -17,7 +17,7 @@ export const apiClient = axios.create({
 });
 
 apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem(TOKEN_KEY);
+  const token = sessionStorage.getItem(TOKEN_KEY);
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -42,8 +42,8 @@ apiClient.interceptors.response.use(
     );
 
     if (status === 401) {
-      localStorage.removeItem(TOKEN_KEY);
-      localStorage.removeItem(USER_KEY);
+      sessionStorage.removeItem(TOKEN_KEY);
+      sessionStorage.removeItem(USER_KEY);
       window.location.href = '/login';
     }
     return Promise.reject(error);

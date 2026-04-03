@@ -15,4 +15,6 @@ public class PhotoBulkUpdateRequest {
     private List<Long> photoIds;
     private String location;      // null = 更新しない
     private String description;   // null = 更新しない
+    private Long   groupId;       // null = 更新しない
+    private String takenAt;       // null = 更新しない ("yyyy-MM-dd'T'HH:mm" 形式)
 }

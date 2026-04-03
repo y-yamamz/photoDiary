@@ -173,6 +173,16 @@ export const UploadPage = () => {
               </Box>
             )}
 
+            {/* HEIC 変換中インジケーター */}
+            {state.converting && (
+              <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                <CircularProgress size={18} sx={{ color: '#a78bfa' }} />
+                <Typography variant="caption" color="#c4b5fd">
+                  HEIC → JPEG に変換中...
+                </Typography>
+              </Box>
+            )}
+
             {/* プログレスバー */}
             {state.uploading && (
               <Box sx={{ mt: 2 }}>
@@ -266,7 +276,7 @@ export const UploadPage = () => {
                   variant="contained"
                   fullWidth
                   onClick={submit}
-                  disabled={form.files.length === 0 || state.uploading}
+                  disabled={form.files.length === 0 || state.uploading || state.converting}
                   sx={{
                     py: 1.5,
                     background: 'linear-gradient(135deg, #7c3aed, #a78bfa)',

@@ -26,3 +26,104 @@ export const createPreviewUrl = (file: File): string =>
 
 export const revokePreviewUrl = (url: string) =>
   URL.revokeObjectURL(url);
+
+// ─── HEIC → JPEG 変換 ──────────────────────────────────────────
+
+/**
+ * HEIC ファイルを JPEG の File オブジェクトに変換する。
+ * HEIC 以外はそのまま返す。
+ */
+export const convertHeicToJpeg = async (file: File): Promise<File> => {
+  if (!getExtension(file.name).match(/^\.heic$/i)) return file;
+  const heic2any = (await import('heic2any')).default;
+  const converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 });
+  const jpegBlob = Array.isArray(converted) ? converted[0] : converted;
+  const jpegName = file.name.replace(/\.heic$/i, '.jpg');
+  return new File([jpegBlob], jpegName, { type: 'image/jpeg' });
+};
+
+// ─── EXIF 撮影日時読み取り ──────────────────────────────────────
+
+/**
+ * JPEG ファイルの EXIF から撮影日時を取得する。
+ * 戻り値: datetime-local 形式 "YYYY-MM-DDTHH:MM"、取得不可なら null
+ */
+export const readExifDate = async (file: File): Promise<string | null> => {
+  const ext = getExtension(file.name);
+  if (ext !== '.jpg' && ext !== '.jpeg') return null;
+  try {
+    const buf = await file.slice(0, 65536).arrayBuffer();
+    const view = new DataView(buf);
+    if (view.getUint16(0) !== 0xFFD8) return null; // JPEG SOI チェック
+
+    let pos = 2;
+    while (pos + 4 <= view.byteLength) {
+      if (view.getUint8(pos) !== 0xFF) break;
+      const marker = view.getUint16(pos);
+      if (marker === 0xFFD9 || marker === 0xFFDA) break; // EOI / SOS
+      const segLen = view.getUint16(pos + 2);
+      if (marker === 0xFFE1) {                           // APP1
+        const result = _parseExifDate(view, pos + 4);
+        if (result) return result;
+      }
+      pos += 2 + segLen;
+    }
+  } catch { /* ignore */ }
+  return null;
+};
+
+const _parseExifDate = (view: DataView, start: number): string | null => {
+  const header = String.fromCharCode(
+    view.getUint8(start), view.getUint8(start + 1),
+    view.getUint8(start + 2), view.getUint8(start + 3),
+  );
+  if (header !== 'Exif') return null;
+
+  const tiff = start + 6; // "Exif\0\0" の後
+  const le   = view.getUint16(tiff) === 0x4949; // II = little-endian
+  const ifd0 = tiff + view.getUint32(tiff + 4, le);
+  return _searchDate(view, tiff, ifd0, le);
+};
+
+const _searchDate = (view: DataView, tiff: number, ifdPos: number, le: boolean): string | null => {
+  if (ifdPos + 2 > view.byteLength) return null;
+  const count = view.getUint16(ifdPos, le);
+  let fallback: string | null = null;
+
+  for (let i = 0; i < count; i++) {
+    const entry = ifdPos + 2 + i * 12;
+    if (entry + 12 > view.byteLength) break;
+    const tag = view.getUint16(entry, le);
+
+    if (tag === 0x9003 || tag === 0x0132) { // DateTimeOriginal / DateTime
+      const valOff = view.getUint32(entry + 8, le);
+      const dt = _exifToIso(_readAscii(view, tiff + valOff, 19));
+      if (dt) {
+        if (tag === 0x9003) return dt;   // DateTimeOriginal を最優先
+        fallback = dt;
+      }
+    }
+    if (tag === 0x8769) {                // Exif SubIFD ポインタ
+      const subIfd = tiff + view.getUint32(entry + 8, le);
+      const sub = _searchDate(view, tiff, subIfd, le);
+      if (sub) return sub;
+    }
+  }
+  return fallback;
+};
+
+const _readAscii = (view: DataView, start: number, maxLen: number): string => {
+  let s = '';
+  for (let i = 0; i < maxLen && start + i < view.byteLength; i++) {
+    const c = view.getUint8(start + i);
+    if (c === 0) break;
+    s += String.fromCharCode(c);
+  }
+  return s;
+};
+
+/** "YYYY:MM:DD HH:MM:SS" → "YYYY-MM-DDTHH:MM" */
+const _exifToIso = (s: string): string | null => {
+  if (!/^\d{4}:\d{2}:\d{2} \d{2}:\d{2}/.test(s)) return null;
+  return s.slice(0, 10).replace(/:/g, '-') + 'T' + s.slice(11, 16);
+};

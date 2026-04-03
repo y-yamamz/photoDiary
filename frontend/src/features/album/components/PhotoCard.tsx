@@ -7,6 +7,7 @@ import { photoCardSx, photoCardSelectedSx } from '../styles/albumSx';
 import { formatDate } from '../../../shared/utils';
 import { toChipStyle } from '../utils/mockData';
 import { alpha } from '@mui/material/styles';
+import { HeicSafeImage } from '../../../shared/components/HeicSafeImage';
 
 interface Props {
   photo: Photo;
@@ -32,8 +33,7 @@ export const PhotoCard = ({ photo, isSelectMode, isSelected, onClick, onToggleSe
     >
       {/* 写真 */}
       <Box sx={{ position: 'relative', paddingTop: '66%', overflow: 'hidden' }}>
-        <Box
-          component="img"
+        <HeicSafeImage
           src={photo.filePath}
           alt={photo.description ?? photo.fileName}
           className="photo-img"

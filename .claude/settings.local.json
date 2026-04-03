@@ -5,7 +5,8 @@
       "Bash(npm run:*)",
       "Bash(node_modules/.bin/tsc --version)",
       "Bash(node -e \"const p = require\\(''./node_modules/@mui/material/package.json''\\); console.log\\(p.version\\)\")",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(grep -E \"^/|\\\\.java$\")"
     ]
   }
 }

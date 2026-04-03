@@ -37,8 +37,13 @@ export const albumApi = {
       .delete<ApiResponse<string>>('/api/photos', { data: { photoIds } })
       .then((r) => r.data),
 
-  /** 写真一括更新（場所・説明） */
-  bulkUpdatePhotos: (photoIds: number[], patch: { location?: string; description?: string }) =>
+  /** 写真一括更新（場所・説明・グループ・撮影日時） */
+  bulkUpdatePhotos: (photoIds: number[], patch: {
+    location?: string;
+    description?: string;
+    groupId?: number;
+    takenAt?: string;
+  }) =>
     apiClient
       .put<ApiResponse<string>>('/api/photos/bulk', { photoIds, ...patch })
       .then((r) => r.data),

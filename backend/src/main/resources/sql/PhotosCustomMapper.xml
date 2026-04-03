@@ -66,6 +66,8 @@
     <set>
       <if test="location    != null">location    = #{location},</if>
       <if test="description != null">description = #{description},</if>
+      <if test="groupId     != null">group_id    = #{groupId,jdbcType=BIGINT},</if>
+      <if test="takenAt     != null">taken_at    = #{takenAt,jdbcType=TIMESTAMP},</if>
     </set>
     WHERE user_id = #{userId}
       AND photo_id IN

@@ -9,9 +9,9 @@ const TOKEN_KEY = 'photo_diary_token';
 const USER_KEY  = 'photo_diary_user';
 
 const loadState = (): AuthState => ({
-  token: localStorage.getItem(TOKEN_KEY),
-  username: localStorage.getItem(USER_KEY),
-  isAuthenticated: !!localStorage.getItem(TOKEN_KEY),
+  token: sessionStorage.getItem(TOKEN_KEY),
+  username: sessionStorage.getItem(USER_KEY),
+  isAuthenticated: !!sessionStorage.getItem(TOKEN_KEY),
 });
 
 export const useAuth = () => {
@@ -25,8 +25,8 @@ export const useAuth = () => {
     setError(null);
     try {
       const response = await authApi.login(values);
-      localStorage.setItem(TOKEN_KEY, response.token);
-      localStorage.setItem(USER_KEY, response.user.username);
+      sessionStorage.setItem(TOKEN_KEY, response.token);
+      sessionStorage.setItem(USER_KEY, response.user.username);
       setAuth({ token: response.token, username: response.user.username, isAuthenticated: true });
       navigate('/album');
     } catch (err) {
@@ -41,8 +41,8 @@ export const useAuth = () => {
     setError(null);
     try {
       const response = await authApi.register(values);
-      localStorage.setItem(TOKEN_KEY, response.token);
-      localStorage.setItem(USER_KEY, response.user.username);
+      sessionStorage.setItem(TOKEN_KEY, response.token);
+      sessionStorage.setItem(USER_KEY, response.user.username);
       setAuth({ token: response.token, username: response.user.username, isAuthenticated: true });
       navigate('/album');
     } catch (err) {
@@ -53,8 +53,8 @@ export const useAuth = () => {
   }, [navigate]);
 
   const logout = useCallback(() => {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
+    sessionStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem(USER_KEY);
     setAuth({ token: null, username: null, isAuthenticated: false });
     navigate('/login');
   }, [navigate]);

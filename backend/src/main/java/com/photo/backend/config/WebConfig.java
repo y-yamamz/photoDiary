@@ -1,21 +1,14 @@
 package com.photo.backend.config;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
-import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
-import java.nio.file.Paths;
-
 /**
- * CORS設定とアップロードファイルの静的配信設定。
+ * CORS設定。画像配信は ImageController が担当する。
  */
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
-
-    @Value("${storage.base-path}")
-    private String storagePath;
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
@@ -24,16 +17,5 @@ public class WebConfig implements WebMvcConfigurer {
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
                 .allowCredentials(true);
-    }
-
-    /**
-     * ストレージ上の画像ファイルを /images/** で配信する。
-     */
-    @Override
-    public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        String location = Paths.get(storagePath).toUri().toString();
-        if (!location.endsWith("/")) location += "/";
-        registry.addResourceHandler("/images/**")
-                .addResourceLocations(location);
     }
 }
