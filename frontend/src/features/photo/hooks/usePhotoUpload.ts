@@ -1,7 +1,9 @@
 import { useState, useCallback, useEffect } from 'react';
 import type { UploadFormValues, UploadState } from '../types';
 import { validateImageFile, createPreviewUrl, revokePreviewUrl } from '../utils/fileUtils';
-import { MOCK_GROUPS } from '../../album/utils/mockData';
+import { albumApi } from '../../album/api/albumApi';
+import { photoApi } from '../api/photoApi';
+import { extractApiError } from '../../../shared/api/apiClient';
 import type { Group } from '../../../shared/types';
 
 const defaultForm = (): UploadFormValues => ({
@@ -21,9 +23,16 @@ const defaultState = (): UploadState => ({
 });
 
 export const usePhotoUpload = () => {
-  const [groups] = useState<Group[]>(MOCK_GROUPS);
+  const [groups, setGroups] = useState<Group[]>([]);
   const [form, setForm] = useState<UploadFormValues>(defaultForm());
   const [state, setState] = useState<UploadState>(defaultState());
+
+  // グループ一覧をAPIから取得
+  useEffect(() => {
+    albumApi.getGroups()
+      .then((data) => setGroups(data ?? []))
+      .catch(() => setGroups([]));
+  }, []);
 
   // 複数ファイルをセット（既存プレビューを解放してから再生成）
   const setFiles = useCallback((files: File[]) => {
@@ -53,8 +62,7 @@ export const usePhotoUpload = () => {
   const removeFile = useCallback((index: number) => {
     setState((s) => {
       revokePreviewUrl(s.previews[index]);
-      const previews = s.previews.filter((_, i) => i !== index);
-      return { ...s, previews };
+      return { ...s, previews: s.previews.filter((_, i) => i !== index) };
     });
     setForm((f) => ({ ...f, files: f.files.filter((_, i) => i !== index) }));
   }, []);
@@ -66,18 +74,40 @@ export const usePhotoUpload = () => {
   const submit = useCallback(async () => {
     if (form.files.length === 0) return;
     setState((s) => ({ ...s, uploading: true, progress: 0, success: false, error: null }));
+
     try {
-      // モック：ファイル数に関わらず進捗シミュレート
-      for (let i = 10; i <= 100; i += 10) {
-        await new Promise((r) => setTimeout(r, 80));
-        setState((s) => ({ ...s, progress: i }));
+      const onProgress = (pct: number) => setState((s) => ({ ...s, progress: pct }));
+
+      if (form.files.length === 1) {
+        // 単体アップロード
+        const fd = new FormData();
+        fd.append('file', form.files[0]);
+        if (form.groupId !== '') fd.append('groupId', String(form.groupId));
+        if (form.takenAt)        fd.append('takenAt', form.takenAt);
+        if (form.location)       fd.append('location', form.location);
+        if (form.description)    fd.append('description', form.description);
+        await photoApi.upload(fd, onProgress);
+      } else {
+        // 一括アップロード
+        const fd = new FormData();
+        form.files.forEach((f) => fd.append('files', f));
+        if (form.groupId !== '') fd.append('groupId', String(form.groupId));
+        if (form.takenAt)        fd.append('takenAt', form.takenAt);
+        if (form.location)       fd.append('location', form.location);
+        if (form.description)    fd.append('description', form.description);
+        await photoApi.bulkUpload(fd, onProgress);
       }
+
       setState((s) => ({ ...s, uploading: false, success: true, previews: [] }));
       setForm(defaultForm());
-    } catch {
-      setState((s) => ({ ...s, uploading: false, error: 'アップロードに失敗しました' }));
+    } catch (err) {
+      setState((s) => ({
+        ...s,
+        uploading: false,
+        error: extractApiError(err),
+      }));
     }
-  }, [form.files]);
+  }, [form]);
 
   const reset = useCallback(() => {
     setState((s) => {

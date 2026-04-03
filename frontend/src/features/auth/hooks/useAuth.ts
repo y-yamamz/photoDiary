@@ -1,10 +1,12 @@
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { AuthState } from '../types';
-import type { LoginFormValues } from '../types';
+import type { AuthState, LoginFormValues } from '../types';
+import { authApi } from '../api/authApi';
+import type { RegisterRequest } from '../api/authApi';
+import { extractApiError } from '../../../shared/api/apiClient';
 
 const TOKEN_KEY = 'photo_diary_token';
-const USER_KEY = 'photo_diary_user';
+const USER_KEY  = 'photo_diary_user';
 
 const loadState = (): AuthState => ({
   token: localStorage.getItem(TOKEN_KEY),
@@ -22,17 +24,29 @@ export const useAuth = () => {
     setLoading(true);
     setError(null);
     try {
-      // モック：実際は authApi.login(values) を使用
-      await new Promise((r) => setTimeout(r, 800));
-      if (values.username === 'demo' && values.password === 'demo') {
-        const token = 'mock-jwt-token-xxx';
-        localStorage.setItem(TOKEN_KEY, token);
-        localStorage.setItem(USER_KEY, values.username);
-        setAuth({ token, username: values.username, isAuthenticated: true });
-        navigate('/album');
-      } else {
-        setError('ユーザー名またはパスワードが正しくありません');
-      }
+      const response = await authApi.login(values);
+      localStorage.setItem(TOKEN_KEY, response.token);
+      localStorage.setItem(USER_KEY, response.user.username);
+      setAuth({ token: response.token, username: response.user.username, isAuthenticated: true });
+      navigate('/album');
+    } catch (err) {
+      setError(extractApiError(err));
+    } finally {
+      setLoading(false);
+    }
+  }, [navigate]);
+
+  const register = useCallback(async (values: RegisterRequest) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await authApi.register(values);
+      localStorage.setItem(TOKEN_KEY, response.token);
+      localStorage.setItem(USER_KEY, response.user.username);
+      setAuth({ token: response.token, username: response.user.username, isAuthenticated: true });
+      navigate('/album');
+    } catch (err) {
+      setError(extractApiError(err));
     } finally {
       setLoading(false);
     }
@@ -45,5 +59,5 @@ export const useAuth = () => {
     navigate('/login');
   }, [navigate]);
 
-  return { auth, loading, error, login, logout };
+  return { auth, loading, error, login, register, logout };
 };

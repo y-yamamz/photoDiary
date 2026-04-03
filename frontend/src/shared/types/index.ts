@@ -46,9 +46,15 @@ export interface LoginRequest {
   password: string;
 }
 
+export interface UserResponse {
+  userId: number;
+  username: string;
+  createdAt: string;
+}
+
 export interface LoginResponse {
   token: string;
-  user: User;
+  user: UserResponse;
 }
 
 export interface PhotoFilter {

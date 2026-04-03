@@ -5,6 +5,10 @@ spring:
     username: yama
     password: yama
     driver-class-name: com.mysql.cj.jdbc.Driver
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 200MB
 
 mybatis:
   mapper-locations: classpath:/sql/**/*.xml
@@ -19,6 +23,10 @@ server:
     include-message: always
     include-binding-errors: always
     include-stacktrace: always
+
+
+storage:
+  base-path: /var/photodiary/images
 
 jwt:
   secret: todoapp-jwt-secret-key-change-in-production-32chars!!

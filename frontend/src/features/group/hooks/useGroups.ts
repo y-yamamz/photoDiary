@@ -1,16 +1,26 @@
-import { useState, useCallback } from 'react';
-import type { Group, GroupFormValues } from '../types';
-import { MOCK_GROUPS } from '../../album/utils/mockData';
-
-let nextId = MOCK_GROUPS.length + 1;
+import { useState, useCallback, useEffect } from 'react';
+import type { Group } from '../../../shared/types';
+import type { GroupFormValues } from '../types';
+import { groupApi } from '../api/groupApi';
+import { extractApiError } from '../../../shared/api/apiClient';
 
 export const useGroups = () => {
-  const [groups, setGroups] = useState<Group[]>([...MOCK_GROUPS]);
+  const [groups, setGroups] = useState<Group[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<GroupFormValues>({ groupName: '', comment: '' });
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // グループ一覧をAPIから取得
+  useEffect(() => {
+    setLoading(true);
+    groupApi.getAll()
+      .then((data) => setGroups(data ?? []))
+      .catch((err) => setError(extractApiError(err)))
+      .finally(() => setLoading(false));
+  }, []);
 
   const updateForm = useCallback((patch: Partial<GroupFormValues>) => {
     setForm((f) => ({ ...f, ...patch }));
@@ -29,44 +39,41 @@ export const useGroups = () => {
   }, []);
 
   const save = useCallback(async () => {
-    if (!form.groupName.trim()) {
-      setError('グループ名を入力してください');
-      return;
-    }
     setSaving(true);
     setError(null);
     try {
-      await new Promise((r) => setTimeout(r, 400)); // モックディレイ
       if (editingId !== null) {
-        setGroups((prev) =>
-          prev.map((g) =>
-            g.groupId === editingId
-              ? { ...g, groupName: form.groupName.trim(), comment: form.comment }
-              : g,
-          ),
-        );
-        setEditingId(null);
-      } else {
-        const newGroup: Group = {
-          groupId: nextId++,
-          userId: 1,
+        // 更新
+        const updated = await groupApi.update(editingId, {
           groupName: form.groupName.trim(),
           comment: form.comment,
-          sortOrder: groups.length + 1,
-          createdAt: new Date().toISOString(),
-        };
-        setGroups((prev) => [...prev, newGroup]);
+        });
+        setGroups((prev) => prev.map((g) => (g.groupId === editingId ? updated : g)));
+        setEditingId(null);
+      } else {
+        // 新規登録
+        const created = await groupApi.create({
+          groupName: form.groupName.trim(),
+          comment: form.comment,
+        });
+        setGroups((prev) => [...prev, created]);
       }
       setForm({ groupName: '', comment: '' });
+    } catch (err) {
+      setError(extractApiError(err));
     } finally {
       setSaving(false);
     }
-  }, [form, editingId, groups.length]);
+  }, [form, editingId]);
 
   const remove = useCallback(async (groupId: number) => {
-    await new Promise((r) => setTimeout(r, 300));
-    setGroups((prev) => prev.filter((g) => g.groupId !== groupId));
-    setDeleteConfirmId(null);
+    try {
+      await groupApi.delete(groupId);
+      setGroups((prev) => prev.filter((g) => g.groupId !== groupId));
+      setDeleteConfirmId(null);
+    } catch (err) {
+      setError(extractApiError(err));
+    }
   }, []);
 
   return {
@@ -75,6 +82,7 @@ export const useGroups = () => {
     form,
     deleteConfirmId,
     saving,
+    loading,
     error,
     updateForm,
     startEdit,

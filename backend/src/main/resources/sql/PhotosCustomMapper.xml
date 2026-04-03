@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.photo.backend.db.mapper.PhotosCustomMapper">
+
+  <!-- タグ付き写真レスポンスのResultMap -->
+  <resultMap id="PhotoWithTagsMap" type="com.photo.backend.dto.response.PhotoResponse">
+    <id     column="photo_id"    property="photoId"/>
+    <result column="user_id"     property="userId"/>
+    <result column="group_id"    property="groupId"/>
+    <result column="file_path"   property="filePath"/>
+    <result column="file_name"   property="fileName"/>
+    <result column="taken_at"    property="takenAt"/>
+    <result column="location"    property="location"/>
+    <result column="description" property="description"/>
+    <result column="sort_order"  property="sortOrder"/>
+    <result column="created_at"  property="createdAt"/>
+    <collection property="tags" ofType="com.photo.backend.dto.response.TagResponse">
+      <id     column="tag_id"   property="tagId"/>
+      <result column="tag_name" property="tagName"/>
+    </collection>
+  </resultMap>
+
+  <!-- タグJOINを含む写真一覧取得（フィルター対応） -->
+  <select id="selectPhotosWithTags" resultMap="PhotoWithTagsMap">
+    SELECT
+      p.photo_id,
+      p.user_id,
+      p.group_id,
+      p.file_path,
+      p.file_name,
+      DATE_FORMAT(p.taken_at,  '%Y-%m-%dT%H:%i:%s') AS taken_at,
+      p.location,
+      p.description,
+      p.sort_order,
+      DATE_FORMAT(p.created_at, '%Y-%m-%dT%H:%i:%s') AS created_at,
+      t.tag_id,
+      t.tag_name
+    FROM photos p
+    LEFT JOIN photo_tags pt ON p.photo_id = pt.photo_id
+    LEFT JOIN tags        t  ON pt.tag_id  = t.tag_id
+    WHERE p.user_id = #{userId}
+    <if test="year    != null">AND YEAR(p.taken_at)  = #{year}</if>
+    <if test="month   != null">AND MONTH(p.taken_at) = #{month}</if>
+    <if test="day     != null">AND DAY(p.taken_at)   = #{day}</if>
+    <if test="groupId != null">AND p.group_id        = #{groupId}</if>
+    <if test="keyword != null and keyword != ''">
+      AND (p.description LIKE CONCAT('%', #{keyword}, '%')
+        OR p.location    LIKE CONCAT('%', #{keyword}, '%'))
+    </if>
+    ORDER BY p.taken_at DESC, p.photo_id DESC
+  </select>
+
+  <!-- 一括削除（自分の写真のみ対象） -->
+  <delete id="bulkDeleteByIds">
+    DELETE FROM photos
+    WHERE user_id = #{userId}
+      AND photo_id IN
+      <foreach collection="ids" item="id" open="(" separator="," close=")">
+        #{id}
+      </foreach>
+  </delete>
+
+  <!-- 一括更新（nullフィールドはスキップ） -->
+  <update id="bulkUpdateByIds">
+    UPDATE photos
+    <set>
+      <if test="location    != null">location    = #{location},</if>
+      <if test="description != null">description = #{description},</if>
+    </set>
+    WHERE user_id = #{userId}
+      AND photo_id IN
+      <foreach collection="ids" item="id" open="(" separator="," close=")">
+        #{id}
+      </foreach>
+  </update>
+
+</mapper>

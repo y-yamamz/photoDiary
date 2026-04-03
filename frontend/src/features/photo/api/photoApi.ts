@@ -1,28 +1,26 @@
-import axios from 'axios';
+import { apiClient } from '../../../shared/api/apiClient';
 import type { Photo, ApiResponse } from '../../../shared/types';
 
-const BASE = '/api';
-
-const axiosWithAuth = () => {
-  const token = localStorage.getItem('photo_diary_token');
-  return axios.create({ headers: { Authorization: `Bearer ${token}` } });
-};
-
 export const photoApi = {
+  /** 写真単体アップロード */
   upload: (formData: FormData, onProgress?: (pct: number) => void) =>
-    axiosWithAuth()
-      .post<ApiResponse<Photo>>(`${BASE}/photos`, formData, {
+    apiClient
+      .post<ApiResponse<Photo>>('/api/photos', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
         onUploadProgress: (e) => {
-          if (e.total && onProgress) {
-            onProgress(Math.round((e.loaded / e.total) * 100));
-          }
+          if (e.total && onProgress) onProgress(Math.round((e.loaded / e.total) * 100));
         },
       })
       .then((r) => r.data.data),
 
-  delete: (photoId: number) =>
-    axiosWithAuth()
-      .delete(`${BASE}/photos/${photoId}`)
-      .then((r) => r.data),
+  /** 写真一括アップロード */
+  bulkUpload: (formData: FormData, onProgress?: (pct: number) => void) =>
+    apiClient
+      .post<ApiResponse<Photo[]>>('/api/photos/bulk', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (e) => {
+          if (e.total && onProgress) onProgress(Math.round((e.loaded / e.total) * 100));
+        },
+      })
+      .then((r) => r.data.data),
 };

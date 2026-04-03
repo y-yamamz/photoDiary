@@ -1,4 +1,4 @@
-import { Box, Typography, Dialog, DialogTitle, DialogContent, DialogActions, Button } from '@mui/material';
+import { Box, Typography, Dialog, DialogTitle, DialogContent, DialogActions, Button, CircularProgress, Alert } from '@mui/material';
 import { Grid } from '@mui/material';
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -51,6 +51,8 @@ export const AlbumPage = () => {
     deletePhotos,
     updatePhoto,
     bulkUpdatePhotos,
+    loading,
+    error,
   } = useAlbum();
 
   const handleBulkDelete = () => {
@@ -113,7 +115,17 @@ export const AlbumPage = () => {
 
         {/* 右：写真グリッド */}
         <Box sx={photoGridSx}>
-          {filteredPhotos.length === 0 ? (
+          {/* ローディング・エラー表示 */}
+          {loading && (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+              <CircularProgress sx={{ color: '#a78bfa' }} />
+            </Box>
+          )}
+          {error && !loading && (
+            <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>{error}</Alert>
+          )}
+
+          {!loading && filteredPhotos.length === 0 ? (
             <Box
               sx={{
                 display: 'flex',
@@ -130,7 +142,7 @@ export const AlbumPage = () => {
                 写真が見つかりません
               </Typography>
             </Box>
-          ) : (
+          ) : !loading && (
             <Grid container spacing={2}>
               {filteredPhotos.map((photo) => (
                 <Grid key={photo.photoId} size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>

@@ -1,12 +1,19 @@
-import axios from 'axios';
-import type { LoginRequest, LoginResponse } from '../../../shared/types';
+import { apiClient } from '../../../shared/api/apiClient';
+import type { ApiResponse, LoginRequest, LoginResponse } from '../../../shared/types';
 
-const BASE = '/api';
+export interface RegisterRequest {
+  username: string;
+  password: string;
+}
 
 export const authApi = {
   login: (body: LoginRequest) =>
-    axios.post<LoginResponse>(`${BASE}/login`, body).then((r) => r.data),
+    apiClient
+      .post<ApiResponse<LoginResponse>>('/api/login', body)
+      .then((r) => r.data.data),
 
-  logout: () =>
-    axios.post(`${BASE}/logout`).then((r) => r.data),
+  register: (body: RegisterRequest) =>
+    apiClient
+      .post<ApiResponse<LoginResponse>>('/api/users/register', body)
+      .then((r) => r.data.data),
 };
