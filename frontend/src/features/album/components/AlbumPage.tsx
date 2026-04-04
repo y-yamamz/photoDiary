@@ -177,8 +177,8 @@ export const AlbumPage = () => {
       {/* ライトボックス */}
       {selectedPhoto && !isSelectMode && (
         <PhotoLightbox
-          photo={selectedPhoto}
-          group={selectedPhoto.groupId ? groupById[selectedPhoto.groupId] : undefined}
+          photos={filteredPhotos}
+          currentIndex={filteredPhotos.findIndex((p) => p.photoId === selectedPhoto.photoId)}
           groups={groups}
           onClose={() => setSelectedPhoto(null)}
           onUpdate={updatePhoto}

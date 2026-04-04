@@ -173,13 +173,16 @@ export const UploadPage = () => {
               </Box>
             )}
 
-            {/* HEIC 変換中インジケーター */}
+            {/* HEIC 変換中プログレスバー */}
             {state.converting && (
-              <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                <CircularProgress size={18} sx={{ color: '#a78bfa' }} />
-                <Typography variant="caption" color="#c4b5fd">
-                  HEIC → JPEG に変換中...
-                </Typography>
+              <Box sx={{ mt: 2 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                  <Typography variant="caption" color="#c4b5fd">
+                    HEIC → JPEG に変換中... ({state.convertDone}/{state.convertTotal}枚)
+                  </Typography>
+                  <Typography variant="caption" color="#a78bfa">{state.convertProgress}%</Typography>
+                </Box>
+                <LinearProgress variant="determinate" value={state.convertProgress} sx={progressBarSx} />
               </Box>
             )}
 

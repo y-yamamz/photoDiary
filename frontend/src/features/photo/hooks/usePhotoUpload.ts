@@ -26,6 +26,9 @@ const defaultState = (): UploadState => ({
   previews: [],
   uploading: false,
   converting: false,
+  convertDone: 0,
+  convertTotal: 0,
+  convertProgress: 0,
   progress: 0,
   success: false,
   error: null,
@@ -64,13 +67,21 @@ export const usePhotoUpload = () => {
     }
 
     // HEIC ファイルが含まれている場合は変換中フラグを立てる
-    const hasHeic = valid.some((f) => /\.heic$/i.test(f.name));
-    if (hasHeic) {
-      setState((s) => ({ ...s, converting: true }));
+    const heicCount = valid.filter((f) => /\.heic$/i.test(f.name)).length;
+    if (heicCount > 0) {
+      setState((s) => ({ ...s, converting: true, convertDone: 0, convertTotal: heicCount, convertProgress: 0 }));
     }
 
     try {
-      const converted = await Promise.all(valid.map(convertHeicToJpeg));
+      let done = 0;
+      const converted = await Promise.all(valid.map(async (f) => {
+        const result = await convertHeicToJpeg(f);
+        if (/\.heic$/i.test(f.name)) {
+          done++;
+          setState((s) => ({ ...s, convertDone: done, convertProgress: Math.round((done / heicCount) * 100) }));
+        }
+        return result;
+      }));
       const previews = converted.map(createPreviewUrl);
       setForm((f) => ({ ...f, files: converted }));
       setState((s) => ({

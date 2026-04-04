@@ -10,6 +10,9 @@ export interface UploadState {
   previews: string[];
   uploading: boolean;
   converting: boolean;
+  convertDone: number;
+  convertTotal: number;
+  convertProgress: number;
   progress: number;
   success: boolean;
   error: string | null;

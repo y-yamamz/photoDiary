@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Box, IconButton, Typography, Chip, Divider, Button,
   TextField, Select, MenuItem, FormControl, InputLabel,
@@ -12,6 +12,8 @@ import CheckIcon from '@mui/icons-material/Check';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import FolderSpecialIcon from '@mui/icons-material/FolderSpecial';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import type { Photo, Group } from '../types';
 import { lightboxOverlaySx } from '../styles/albumSx';
 import { formatDate } from '../../../shared/utils';
@@ -28,24 +30,52 @@ interface EditForm {
 }
 
 interface Props {
-  photo: Photo;
-  group?: Group;
+  photos: Photo[];
+  currentIndex: number;
   groups: Group[];
   onClose: () => void;
   onUpdate: (updated: Photo) => void;
   onDelete: (photoId: number) => void;
 }
 
-export const PhotoLightbox = ({ photo, group, groups, onClose, onUpdate, onDelete }: Props) => {
+export const PhotoLightbox = ({ photos, currentIndex, groups, onClose, onUpdate, onDelete }: Props) => {
+  const [idx, setIdx] = useState(currentIndex);
+  const photo = photos[idx];
+  const group = groups.find((g) => g.groupId === photo?.groupId);
+
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [form, setForm] = useState<EditForm>({
-    description: photo.description ?? '',
-    location: photo.location ?? '',
-    takenAt: photo.takenAt ? photo.takenAt.slice(0, 16) : '',
-    groupId: photo.groupId ?? '',
+    description: photo?.description ?? '',
+    location: photo?.location ?? '',
+    takenAt: photo?.takenAt ? photo.takenAt.slice(0, 16) : '',
+    groupId: photo?.groupId ?? '',
   });
+
+  // idx が変わったら編集状態をリセット
+  useEffect(() => {
+    setIsEditing(false);
+    setForm({
+      description: photo?.description ?? '',
+      location: photo?.location ?? '',
+      takenAt: photo?.takenAt ? photo.takenAt.slice(0, 16) : '',
+      groupId: photo?.groupId ?? '',
+    });
+  }, [idx]); // eslint-disable-line
+
+  // キーボード操作
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft')  setIdx((i) => Math.max(0, i - 1));
+      if (e.key === 'ArrowRight') setIdx((i) => Math.min(photos.length - 1, i + 1));
+      if (e.key === 'Escape')     onClose();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [photos.length, onClose]);
+
+  if (!photo) return null;
 
   const startEdit = () => {
     setForm({
@@ -102,6 +132,8 @@ export const PhotoLightbox = ({ photo, group, groups, onClose, onUpdate, onDelet
               alt={photo.description}
               sx={{ maxHeight: '85vh', maxWidth: '60vw', objectFit: 'contain', display: 'block' }}
             />
+
+            {/* 閉じるボタン */}
             <IconButton
               onClick={onClose}
               sx={{
@@ -115,6 +147,63 @@ export const PhotoLightbox = ({ photo, group, groups, onClose, onUpdate, onDelet
             >
               <CloseIcon />
             </IconButton>
+
+            {/* 前へボタン */}
+            {idx > 0 && (
+              <IconButton
+                onClick={() => setIdx((i) => i - 1)}
+                sx={{
+                  position: 'absolute',
+                  left: 8,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: alpha('#000', 0.5),
+                  color: 'white',
+                  '&:hover': { background: alpha('#7c3aed', 0.7) },
+                }}
+              >
+                <ChevronLeftIcon />
+              </IconButton>
+            )}
+
+            {/* 次へボタン */}
+            {idx < photos.length - 1 && (
+              <IconButton
+                onClick={() => setIdx((i) => i + 1)}
+                sx={{
+                  position: 'absolute',
+                  right: 8,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: alpha('#000', 0.5),
+                  color: 'white',
+                  '&:hover': { background: alpha('#7c3aed', 0.7) },
+                }}
+              >
+                <ChevronRightIcon />
+              </IconButton>
+            )}
+
+            {/* 枚数インジケーター */}
+            {photos.length > 1 && (
+              <Typography
+                variant="caption"
+                sx={{
+                  position: 'absolute',
+                  bottom: 10,
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  background: alpha('#000', 0.55),
+                  color: 'white',
+                  px: 1.5,
+                  py: 0.3,
+                  borderRadius: 10,
+                  pointerEvents: 'none',
+                }}
+              >
+                {idx + 1} / {photos.length}
+              </Typography>
+            )}
           </Box>
 
           {/* 詳細パネル */}

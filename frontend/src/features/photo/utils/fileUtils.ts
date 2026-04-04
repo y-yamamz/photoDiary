@@ -29,13 +29,22 @@ export const revokePreviewUrl = (url: string) =>
 
 // ─── HEIC → JPEG 変換 ──────────────────────────────────────────
 
+type Heic2AnyFn = (opts: { blob: Blob; toType: string; quality: number }) => Promise<Blob | Blob[]>;
+
+// heic2any モジュールを一度だけロードしてキャッシュする
+let _heic2any: Heic2AnyFn | null = null;
+const loadHeic2any = async (): Promise<Heic2AnyFn> => {
+  if (!_heic2any) _heic2any = (await import('heic2any')).default as unknown as Heic2AnyFn;
+  return _heic2any;
+};
+
 /**
  * HEIC ファイルを JPEG の File オブジェクトに変換する。
  * HEIC 以外はそのまま返す。
  */
 export const convertHeicToJpeg = async (file: File): Promise<File> => {
   if (!getExtension(file.name).match(/^\.heic$/i)) return file;
-  const heic2any = (await import('heic2any')).default;
+  const heic2any = await loadHeic2any();
   const converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 });
   const jpegBlob = Array.isArray(converted) ? converted[0] : converted;
   const jpegName = file.name.replace(/\.heic$/i, '.jpg');
