@@ -26,8 +26,8 @@ server:
 
 
 storage:
-  #base-path: /var/photodiary/images
-  base-path: \\192.168.0.5\homedir\PhotoDiary
+  base-path: /var/photodiary/images
+  #base-path: \\192.168.0.5\homedir\PhotoDiary
 
 jwt:
   secret: todoapp-jwt-secret-key-change-in-production-32chars!!

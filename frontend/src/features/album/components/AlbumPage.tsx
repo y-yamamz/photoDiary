@@ -28,7 +28,6 @@ export const AlbumPage = () => {
     photos,
     filteredPhotos,
     groups,
-    groupById,
     filter,
     dateTree,
     selectedDate,

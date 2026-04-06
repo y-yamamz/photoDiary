@@ -5,7 +5,7 @@ import { AlbumPage } from '../features/album/components/AlbumPage';
 import { UploadPage } from '../features/photo/components/UploadPage';
 import { GroupPage } from '../features/group/components/GroupPage';
 
-const isAuthenticated = () => !!localStorage.getItem('photo_diary_token');
+const isAuthenticated = () => !!sessionStorage.getItem('photo_diary_token');
 
 const PrivateRoute = ({ element }: { element: React.ReactElement }) =>
   isAuthenticated() ? element : <Navigate to="/login" replace />;

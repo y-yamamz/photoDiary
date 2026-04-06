@@ -41,7 +41,10 @@ apiClient.interceptors.response.use(
       },
     );
 
-    if (status === 401) {
+    // ログイン・登録エンドポイント自体の 401 はリダイレクトしない
+    // （認証失敗メッセージを画面に表示させるため）
+    const isAuthEndpoint = url.includes('/api/login') || url.includes('/api/users/register');
+    if (status === 401 && !isAuthEndpoint) {
       sessionStorage.removeItem(TOKEN_KEY);
       sessionStorage.removeItem(USER_KEY);
       window.location.href = '/login';
