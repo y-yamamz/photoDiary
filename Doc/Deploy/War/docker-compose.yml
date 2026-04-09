@@ -1,0 +1,57 @@
+# =============================================================
+# PhotoDiary - Docker Compose (WAR デプロイ版)
+#
+# 前提: build-war.bat を実行して以下が存在すること
+#   Doc/Deploy/War/backend.war
+#   Doc/Deploy/War/frontend.war
+#
+# 起動コマンド (Doc/Deploy/War/ フォルダで実行):
+#   docker compose up -d --build
+#
+# 停止コマンド:
+#   docker compose down
+# =============================================================
+
+services:
+
+  # =====================
+  # フロントエンド (Nginx + React)
+  # =====================
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: photodiary-frontend
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - photodiary-network
+
+  # =====================
+  # バックエンド (Tomcat + Spring Boot)
+  # =====================
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: photodiary-backend
+    environment:
+      - SPRING_DATASOURCE_URL=${MYSQL_URL:-jdbc:mysql://192.168.0.3:3306/photodb?useSSL=false&serverTimezone=Asia/Tokyo}
+      - SPRING_DATASOURCE_USERNAME=${MYSQL_USER:-yama}
+      - SPRING_DATASOURCE_PASSWORD=${MYSQL_PASSWORD:-yama}
+      - STORAGE_BASE_PATH=/var/photodiary/images
+      - TZ=Asia/Tokyo
+      - JAVA_OPTS=-Dfile.encoding=UTF-8 -Duser.timezone=Asia/Tokyo
+    volumes:
+      # NAS上の画像フォルダをマウント（パスは環境に合わせて変更）
+      - ${IMAGE_VOLUME_PATH:-//192.168.0.5/homedir/PhotoDiary}:/var/photodiary/images
+    restart: unless-stopped
+    networks:
+      - photodiary-network
+
+networks:
+  photodiary-network:
+    name: photodiary-war-network

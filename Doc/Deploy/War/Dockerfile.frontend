@@ -1,0 +1,31 @@
+# =============================================================
+# Frontend Dockerfile (WAR版)
+# 事前にビルドした frontend.war (ZIP) を Nginx に展開して配信する
+# build-war.bat で frontend.war を生成してから使用すること
+# =============================================================
+
+FROM nginx:1.27-alpine
+
+# デフォルトのコンテンツを削除
+RUN rm -rf /usr/share/nginx/html/*
+
+# frontend.war (ZIP形式) を解凍して Nginx の公開ディレクトリに展開
+# Windows の Compress-Archive はバックスラッシュでパスを格納するため
+# 展開後にバックスラッシュ名のファイルを正しいディレクトリ構造へ変換する
+COPY frontend.war /tmp/frontend.war
+RUN unzip /tmp/frontend.war -d /usr/share/nginx/html && \
+    rm /tmp/frontend.war && \
+    find /usr/share/nginx/html -maxdepth 1 -name '*\\*' | while IFS= read -r f; do \
+        base=$(basename "$f"); \
+        dir=$(echo "$base" | sed 's|\\.*||'); \
+        file=$(echo "$base" | sed 's|^[^\\]*\\||'); \
+        mkdir -p "/usr/share/nginx/html/$dir"; \
+        mv "$f" "/usr/share/nginx/html/$dir/$file"; \
+    done
+
+# Nginx 設定ファイルを配置
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]
