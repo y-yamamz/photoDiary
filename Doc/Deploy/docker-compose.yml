@@ -1,5 +1,7 @@
 # =============================================================
-# PhotoDiary - Docker Compose 構成（Windows Yドライブ使用版）
+# PhotoDiary - Docker Compose 構成（CIFS named volume 使用版）
+# net use・File Sharing 設定は不要
+# NAS認証が必要な場合は .env に NAS_USER / NAS_PASSWORD を設定する
 # =============================================================
 
 services:
@@ -30,11 +32,10 @@ services:
       - JAVA_OPTS=-Dfile.encoding=UTF-8 -Duser.timezone=Asia/Tokyo
 
     volumes:
-      # 🔥 NAS（Yドライブ）をそのままマウント
-      - //192.168.0.5/HOMEDIR/PhotoDiary:/var/photodiary/images
+      - //192.168.0.5/homedir/PhotoDiary:/var/photodiary/images
 
     restart: unless-stopped
-
+      
 networks:
   default:
     name: photodiary-network

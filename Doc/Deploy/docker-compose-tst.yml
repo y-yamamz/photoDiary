@@ -1,0 +1,21 @@
+version: "3.9"
+# テスト・検証用のコンテナ
+services:
+  debug-container:
+    image: ubuntu:22.04
+    container_name: debug-container
+    tty: true
+    stdin_open: true
+    privileged: true
+    command: /bin/bashexit
+    volumes:
+      - /mnt/nas:/mnt/nas    
+
+#docker compose -f Doc/Deploy/docker-compose-tst.yml up -d
+#docker exec -it --privileged debug-container bash
+#apt update
+#apt install -y iputils-ping curl smbclient cifs-utils net-tools
+
+#smbclient -L //192.168.0.5 -U test
+#mkdir /mnt/nas
+#mount -t cifs //192.168.0.5/HOMEDIR /mnt/nas -o username=test,password=test,vers=2.1,sec=ntlm

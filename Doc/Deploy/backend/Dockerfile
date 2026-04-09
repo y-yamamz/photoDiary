@@ -24,7 +24,9 @@ RUN chmod +x gradlew && ./gradlew bootWar --no-daemon -x test
 # =====================
 FROM tomcat:10.1-jdk17-temurin
 
-RUN rm -rf /usr/local/tomcat/webapps/*
+RUN apt-get update && apt-get install -y cifs-utils && rm -rf /usr/local/tomcat/webapps/*
+
+RUN mkdir -p /var/photodiary/images
 
 COPY --from=builder /app/build/libs/backend.war /usr/local/tomcat/webapps/ROOT.war
 
