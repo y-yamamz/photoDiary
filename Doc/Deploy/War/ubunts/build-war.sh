@@ -1,87 +1,82 @@
 #!/bin/bash
 # =============================================================
-# PhotoDiary WAR Build Script (Linux / Ubuntu 用)
+# PhotoDiary Deploy Script (Ubuntu)
 #
-# このスクリプトは Doc/Deploy/War/ubunts/ から実行してください
-#   cd Doc/Deploy/War/ubunts
+# 事前に以下のファイルを同じフォルダに配置してください:
+#   backend.war            (Windows の create-war.bat で生成)
+#   frontend.war           (Windows の create-war.bat で生成)
+#   docker-compose.ubunts.yml
+#   Dockerfile.backend
+#   Dockerfile.frontend
+#   nginx.conf
+#   .env                   (.env.example をコピーして編集)
+#
+# 実行方法:
 #   bash build-war.sh
 # =============================================================
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-ROOT_DIR="$(cd "$SCRIPT_DIR/../../../../" && pwd)"
-BACKEND_DIR="$ROOT_DIR/backend"
-FRONTEND_DIR="$ROOT_DIR/frontend"
-WAR_DIR="$SCRIPT_DIR"
+cd "$SCRIPT_DIR"
 
 echo "=============================================="
-echo " photoDiary WAR Build Start"
-echo "=============================================="
-echo " ROOT    : $ROOT_DIR"
-echo " WAR OUT : $WAR_DIR"
+echo " photoDiary Deploy Start"
 echo "=============================================="
 
 # ------------------------------------------
-# [1/4] Backend WAR ビルド
+# [1/4] backend.war の確認
 # ------------------------------------------
 echo ""
-echo "[1/4] Building Backend WAR..."
-cd "$BACKEND_DIR"
-if [ ! -f "gradlew" ]; then
-    echo "[ERROR] gradlew not found: $BACKEND_DIR"
+echo "[1/4] Checking backend.war..."
+if [ ! -f "backend.war" ]; then
+    echo "[ERROR] backend.war not found."
+    echo "        Run create-war.bat on Windows and transfer the file here."
     exit 1
 fi
-chmod +x gradlew
-./gradlew clean bootWar --no-daemon
+echo "       OK: backend.war"
 
 # ------------------------------------------
-# [2/4] backend.war をコピー
+# [2/4] frontend.war の確認
 # ------------------------------------------
 echo ""
-echo "[2/4] Copying backend.war to ubunts folder..."
-BACKEND_WAR=$(find "$BACKEND_DIR/build/libs" -name "backend.war" | head -1)
-if [ -z "$BACKEND_WAR" ]; then
-    echo "[ERROR] backend.war not found in $BACKEND_DIR/build/libs"
+echo "[2/4] Checking frontend.war..."
+if [ ! -f "frontend.war" ]; then
+    echo "[ERROR] frontend.war not found."
+    echo "        Run create-war.bat on Windows and transfer the file here."
     exit 1
 fi
-cp "$BACKEND_WAR" "$WAR_DIR/backend.war"
-echo "       -> $WAR_DIR/backend.war"
+echo "       OK: frontend.war"
 
 # ------------------------------------------
-# [3/4] Frontend ビルド
+# [3/4] .env の確認
 # ------------------------------------------
 echo ""
-echo "[3/4] Building Frontend..."
-cd "$FRONTEND_DIR"
-if [ ! -f "package.json" ]; then
-    echo "[ERROR] package.json not found: $FRONTEND_DIR"
+echo "[3/4] Checking .env..."
+if [ ! -f ".env" ]; then
+    echo "[ERROR] .env not found."
+    echo "        Create .env in the same directory with the following contents:"
+    echo ""
+    echo "          MYSQL_URL=jdbc:mysql://192.168.0.3:3306/photodb?useSSL=false&serverTimezone=Asia/Tokyo"
+    echo "          MYSQL_USER=yama"
+    echo "          MYSQL_PASSWORD=yama"
+    echo "          FRONTEND_PORT=80"
+    echo "          IMAGE_LOCAL_PATH=/mnt/homedir/PhotoDiary"
+    echo ""
     exit 1
 fi
-if [ ! -d "node_modules" ]; then
-    echo "       node_modules not found. Running npm install..."
-    npm install
-fi
-npm run build
+echo "       OK: .env"
 
 # ------------------------------------------
-# [4/4] frontend.war を作成
+# [4/4] Docker Compose でデプロイ
 # ------------------------------------------
 echo ""
-echo "[4/4] Creating frontend.war..."
-DIST_DIR="$FRONTEND_DIR/dist"
-if [ ! -d "$DIST_DIR" ]; then
-    echo "[ERROR] dist folder not found: $DIST_DIR"
-    exit 1
-fi
-
-# jar コマンドで WAR を作成（JDK 付属、フォワードスラッシュで格納される）
-jar cf "$WAR_DIR/frontend.war" -C "$DIST_DIR" .
-echo "       -> $WAR_DIR/frontend.war"
+echo "[4/4] Deploying with Docker Compose..."
+docker compose -f docker-compose.ubunts.yml down 2>/dev/null || true
+docker compose -f docker-compose.ubunts.yml up -d --build
 
 echo ""
 echo "=============================================="
-echo " Build Complete! Run to deploy:"
-echo "   cd Doc/Deploy/War/ubunts"
-echo "   docker compose -f docker-compose.ubunts.yml up -d --build"
+echo " Deploy Complete!"
+echo " Access: http://$(hostname -I | awk '{print $1}')/"
 echo "=============================================="

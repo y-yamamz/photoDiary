@@ -5,8 +5,13 @@
 
 ## 概要
 
-ソースコードのビルドを Docker 外（Ubuntu 上）で行い、生成した WAR ファイルを Docker コンテナにデプロイする方式です。
+WAR ファイルは **Windows 11 上でビルド**し、Ubuntu へ転送して Docker でデプロイします。
 写真ファイルの保存先は **Ubuntu ホスト側でマウント済みの NAS（`/mnt/homedir`）をバインドマウント** で使用します。
+
+| 作業場所 | スクリプト | 役割 |
+|---|---|---|
+| Windows 11 | `create-war.bat` | WAR ファイルをビルド |
+| Ubuntu | `build-war.sh` | WAR の確認 → Docker デプロイ |
 
 | コンポーネント | 技術 | 役割 |
 |---|---|---|
@@ -21,48 +26,60 @@
                              └─ /images/** → Tomcat (8080) → /mnt/homedir/PhotoDiary
 ```
 
-> **バインドマウントの仕組み**
-> Ubuntu ホスト側で NAS が `/mnt/homedir` にマウント済みであるため、
-> `docker-compose.ubunts.yml` ではそのパスをコンテナ内の `/var/photodiary/images` に直接バインドマウントします。
-> Docker Desktop の CIFS named volume は不要です。
-
 ---
 
 ## ファイル構成
 
+### Windows（リポジトリ内）
+
 ```
 Doc/Deploy/War/ubunts/
-├── 手順書_ubuntu.md               # 本ファイル
+├── create-war.bat                 # WAR ビルドスクリプト (Windows 11 用)
+├── create-frontend-war.ps1        # frontend.war 作成ヘルパー (Windows 用)
+├── backend.war                    # ★ create-war.bat 実行後に生成
+└── frontend.war                   # ★ create-war.bat 実行後に生成
+```
+
+### Ubuntu（配布・配置先）
+
+```
+/var/work/ubunts/                  # 配布先フォルダ（任意のパス可）
+├── build-war.sh                   # Ubuntuデプロイスクリプト
 ├── docker-compose.ubunts.yml      # Docker Compose 定義
 ├── Dockerfile.backend             # Tomcat + backend.war
 ├── Dockerfile.frontend            # Nginx + frontend.war
 ├── nginx.conf                     # Nginx 設定
-├── .env.example                   # 環境変数テンプレート
-├── build-war.sh                   # WAR ビルドスクリプト (Linux)
-├── backend.war                    # ★ build-war.sh 実行後に生成
-└── frontend.war                   # ★ build-war.sh 実行後に生成
+├── .env                           # ★ Ubuntu上で手動作成（下記参照）
+├── backend.war                    # ★ Windows からコピー
+└── frontend.war                   # ★ Windows からコピー
 ```
 
 ---
 
 ## 前提条件
 
+### Windows 11（WAR ビルド側）
+
+- Java 17 (JDK) が PATH に通っていること（`java -version` で確認）
+- Node.js (v20 以上) が PATH に通っていること（`node -v` で確認）
+- PowerShell が使用可能であること（Windows 11 標準で同梱）
+
+```cmd
+java -version
+node -v
+```
+
+### Ubuntu（デプロイ側）
+
 - Ubuntu（20.04 以上推奨）
 - Docker Engine が起動済み（`docker --version` で確認）
 - Docker Compose Plugin がインストール済み（`docker compose version` で確認）
-- Java 17 (JDK) が PATH に通っていること（`java -version` で確認）
-- Node.js (v20 以上) が PATH に通っていること（`node -v` で確認）
 - MySQL が `192.168.0.3:3306/photodb` で稼働中
 - NAS が `/mnt/homedir` にマウント済みであること
 
 ```bash
-# 事前確認コマンド
-java -version
-node -v
 docker --version
 docker compose version
-
-# NAS マウント確認
 ls /mnt/homedir
 ```
 
@@ -71,8 +88,6 @@ ls /mnt/homedir
 ## 事前準備（初回のみ）
 
 ### 1. NAS のマウント確認・設定
-
-NAS が `/mnt/homedir` にマウントされていることを確認します。
 
 ```bash
 # マウント状態の確認
@@ -92,7 +107,6 @@ OS 起動時に自動マウントする場合は `/etc/fstab` に追記します
 ### 2. 画像保存フォルダの確認・作成
 
 ```bash
-# フォルダ確認（なければ作成）
 ls /mnt/homedir/PhotoDiary || mkdir -p /mnt/homedir/PhotoDiary
 ```
 
@@ -105,49 +119,44 @@ sudo usermod -aG docker $USER
 # 反映には再ログインが必要
 ```
 
+### 4. Ubuntu への配布ファイル配置（初回のみ）
+
+以下のファイルを `/var/work/ubunts/`（任意のパス可）に配置します：
+
+```
+build-war.sh
+docker-compose.ubunts.yml
+Dockerfile.backend
+Dockerfile.frontend
+nginx.conf
+.env.example #ubuntsの配布は不要
+```
+
+配置後、CRLF 改行を変換します：
+
+```bash
+dos2unix /var/work/ubunts/build-war.sh
+```
+
+> `.env.example` は配布不要です。`.env` は Ubuntu 上で直接作成します（Step 3 参照）。
+
 ---
 
 ## デプロイ手順
 
-### Step 1: ubunts フォルダへ移動
+### Step 1: Windows で WAR をビルド
 
-```bash
-cd ~/photoDiary/Doc/Deploy/War/ubunts
+```powershell
+cd Doc\Deploy\War\ubunts
+.\create-war.bat
 ```
-
-### Step 2: 環境変数ファイルを作成
-
-```bash
-cp .env.example .env
-```
-
-`.env` を開いて接続情報を確認・編集します：
-
-```env
-MYSQL_URL=jdbc:mysql://192.168.0.3:3306/photodb?useSSL=false&serverTimezone=Asia/Tokyo
-MYSQL_USER=yama
-MYSQL_PASSWORD=yama
-FRONTEND_PORT=80
-IMAGE_LOCAL_PATH=/mnt/homedir/PhotoDiary
-```
-
-> `IMAGE_LOCAL_PATH` は Ubuntu ホスト上の実際のパスを指定します。
-> NAS 直下に保存する場合は `/mnt/homedir` に変更してください。
-
-### Step 3: WAR ファイルをビルド
-
-```bash
-bash build-war.sh
-```
-
-**処理内容:**
 
 | ステップ | 内容 |
 |---|---|
-| [1/4] | `backend/` で `./gradlew clean bootWar` を実行 |
-| [2/4] | `backend/build/libs/backend.war` を `ubunts/` へコピー |
+| [1/4] | `backend/` で `gradlew.bat clean bootWar` を実行 |
+| [2/4] | `backend.war` を `ubunts/` へコピー |
 | [3/4] | `frontend/` で `npm run build` を実行 |
-| [4/4] | `jar cf` で `frontend/dist/` を `frontend.war` にパッケージ |
+| [4/4] | `frontend/dist/` を `frontend.war` にパッケージ |
 
 完了すると以下が生成されます：
 ```
@@ -155,39 +164,42 @@ Doc/Deploy/War/ubunts/backend.war
 Doc/Deploy/War/ubunts/frontend.war
 ```
 
-> **初回は時間がかかります**
-> Gradle の依存ライブラリダウンロード: 5〜10 分
-> npm install（node_modules がない場合）: 2〜5 分
+### Step 2: WAR ファイルを Ubuntu へ転送
 
-> **`jar` コマンドがない場合**
-> JDK が未インストールの可能性があります。
-> ```bash
-> sudo apt install default-jdk
-> ```
-> または `zip` コマンドで代替できます（`build-war.sh` 内の `jar cf` 行を書き換え）：
-> ```bash
-> cd frontend/dist && zip -r ../../Doc/Deploy/War/ubunts/frontend.war . && cd ../..
-> ```
-
-### Step 4: MySQL のテーブルを確認
-
-MySQL が稼働中で `photodb` のテーブルが作成済みであることを確認します。
-未作成の場合は `Doc/DB/` 配下の SQL ファイルを実行してください。
-
-```bash
-mysql -h 192.168.0.3 -u yama -p photodb
+```powershell
+scp Doc\Deploy\War\ubunts\backend.war  ユーザー名@Ubuntu-IP:/var/work/ubunts/
+scp Doc\Deploy\War\ubunts\frontend.war ユーザー名@Ubuntu-IP:/var/work/ubunts/
 ```
 
-### Step 5: Docker でデプロイ（初回）
+### Step 3: .env を作成（初回のみ）
 
 ```bash
-# ubunts/ フォルダにいることを確認してから実行
-docker compose -f docker-compose.ubunts.yml up -d --build
+cat > /var/work/ubunts/.env << 'EOF'
+MYSQL_URL=jdbc:mysql://192.168.0.3:3306/photodb?useSSL=false&serverTimezone=Asia/Tokyo
+MYSQL_USER=yama
+MYSQL_PASSWORD=yama
+FRONTEND_PORT=80
+IMAGE_LOCAL_PATH=/mnt/homedir/PhotoDiary
+EOF
 ```
 
-初回はイメージのビルドがあるため 1〜3 分かかります。
+### Step 4: build-war.sh でデプロイ
 
-### Step 6: 起動確認
+```bash
+cd /var/work/ubunts
+bash build-war.sh
+```
+
+**処理内容:**
+
+| ステップ | 内容 |
+|---|---|
+| [1/4] | `backend.war` の存在確認 |
+| [2/4] | `frontend.war` の存在確認 |
+| [3/4] | `.env` の存在確認 |
+| [4/4] | `docker compose down` → `docker compose up -d --build` |
+
+### Step 5: 起動確認
 
 ```bash
 docker compose -f docker-compose.ubunts.yml ps
@@ -201,44 +213,64 @@ photodiary-backend     running
 
 両コンテナが `running` になれば起動完了です。
 
-### Step 7: ブラウザで動作確認
-
-```
-http://サーバーのIPアドレス/
-```
-
 > Tomcat の起動完了まで **30〜60 秒**かかります。
-> ページが表示されない場合は少し待ってからリロードしてください。
+
+### Step 6: ブラウザで動作確認
+
+Ubuntu の IP アドレスを確認します：
+
+```bash
+hostname -I
+```
+
+ブラウザで以下にアクセスします：
+
+```
+http://<UbuntuのIPアドレス>/
+```
+
+**この環境の場合:**
+
+```
+http://192.168.0.X/
+```
+
+> ページが表示されない場合は 30〜60 秒待ってからリロードしてください。
+> Tomcat の起動ログは `docker logs photodiary-backend -f` で確認できます。
 
 ---
 
 ## WAR を更新してデプロイし直す手順
 
-ソースコードを変更した場合は以下の手順を繰り返します。
+**1. Windows 11 で WAR を再ビルド**
 
-```bash
-cd ~/photoDiary/Doc/Deploy/War/ubunts
-
-# 1. WAR を再ビルド
-bash build-war.sh
-
-# 2. コンテナを再ビルド・再起動
-docker compose -f docker-compose.ubunts.yml down
-docker compose -f docker-compose.ubunts.yml up -d --build
+```powershell
+.\create-war.bat
 ```
 
-> **注意: `docker compose up -d --build` だけでは古いキャッシュが残る場合があります。**
-> 画面が更新されない場合は `docker compose down` を先に実行してください。
+**2. Ubuntu へ転送**
 
-**片方だけ更新する場合:**
+```powershell
+scp Doc\Deploy\War\ubunts\backend.war  ユーザー名@Ubuntu-IP:/var/work/ubunts/
+scp Doc\Deploy\War\ubunts\frontend.war ユーザー名@Ubuntu-IP:/var/work/ubunts/
+```
+
+**3. Ubuntu でデプロイ**
 
 ```bash
-# フロントエンドのみ（確実に再ビルドする場合）
+cd /var/work/ubunts
+bash build-war.sh
+```
+
+**片方だけ更新する場合（イメージキャッシュを確実に消す）:**
+
+```bash
+# フロントエンドのみ
 docker compose -f docker-compose.ubunts.yml down
 docker rmi ubunts-frontend
 docker compose -f docker-compose.ubunts.yml up -d --build
 
-# バックエンドのみ（確実に再ビルドする場合）
+# バックエンドのみ
 docker compose -f docker-compose.ubunts.yml down
 docker rmi ubunts-backend
 docker compose -f docker-compose.ubunts.yml up -d --build
@@ -260,6 +292,20 @@ docker compose -f docker-compose.ubunts.yml down --rmi all
 
 ## トラブルシューティング
 
+### build-war.sh 実行時に `$'\r': コマンドが見つかりません` エラー
+
+`build-war.sh` が CRLF 改行になっています。以下で変換してください：
+
+```bash
+dos2unix /var/work/ubunts/build-war.sh
+```
+
+`dos2unix` がない場合：
+
+```bash
+tr -d '\r' < build-war.sh > /tmp/b.sh && mv /tmp/b.sh build-war.sh
+```
+
 ### ページが表示されない (502 Bad Gateway)
 
 Tomcat の起動完了まで時間がかかります。ログを確認してください：
@@ -272,14 +318,11 @@ docker logs photodiary-backend -f
 
 ### 画面が真っ白になる（JS が読み込まれない）
 
-frontend コンテナ内の `assets/` ディレクトリが正しく展開されているか確認します：
-
 ```bash
-docker exec photodiary-frontend ls /usr/share/nginx/html/
 docker exec photodiary-frontend ls /usr/share/nginx/html/assets/
 ```
 
-`assets/` が存在しない場合、イメージを完全に削除して再ビルドします：
+`assets/` が存在しない場合はイメージを完全削除して再ビルド：
 
 ```bash
 docker compose -f docker-compose.ubunts.yml down
@@ -290,35 +333,16 @@ docker compose -f docker-compose.ubunts.yml up -d --build
 ### 写真が表示されない
 
 ```bash
-# コンテナ内に NAS フォルダが見えるか確認
 docker exec photodiary-backend ls /var/photodiary/images
-```
-
-何も表示されない場合は以下を確認します：
-
-**1. NAS がマウントされているか**
-```bash
 mount | grep /mnt/homedir
-ls /mnt/homedir/PhotoDiary
 ```
+
 マウントされていない場合は再マウントしてから Docker を再起動してください：
+
 ```bash
 sudo mount -t cifs //192.168.0.5/homedir /mnt/homedir \
   -o username=xxx,password=yyy,vers=2.1
-docker compose -f docker-compose.ubunts.yml down
-docker compose -f docker-compose.ubunts.yml up -d --build
-```
-
-**2. `.env` の `IMAGE_LOCAL_PATH` が正しいか**
-```env
-IMAGE_LOCAL_PATH=/mnt/homedir/PhotoDiary
-```
-
-**3. フォルダのパーミッションを確認**
-```bash
-ls -la /mnt/homedir/PhotoDiary
-# コンテナ（Tomcat）からの書き込みが必要な場合
-sudo chmod 777 /mnt/homedir/PhotoDiary
+bash build-war.sh
 ```
 
 ### MySQL に接続できない
@@ -331,40 +355,31 @@ docker logs photodiary-backend -f
 - MySQL ユーザーに Docker ホスト IP からのアクセス権があるか確認
 
 ```sql
--- MySQL 側で権限付与（必要な場合）
 GRANT ALL PRIVILEGES ON photodb.* TO 'yama'@'%' IDENTIFIED BY 'yama';
 FLUSH PRIVILEGES;
 ```
 
-### build-war.sh でビルドエラー
+### create-war.bat でビルドエラー
 
-**Backend (Gradle) のエラー:**
-```bash
-cd ~/photoDiary/backend
-./gradlew bootWar --info
+```cmd
+cd backend
+gradlew.bat bootWar --info
 ```
 
-**Frontend (npm) のエラー:**
-```bash
-cd ~/photoDiary/frontend
+```cmd
+cd frontend
 npm run build
 ```
 
 ### ポート 80 が使用中
 
 `.env` でポートを変更します：
+
 ```env
 FRONTEND_PORT=8080
 ```
 
-使用中のプロセス確認：
-```bash
-sudo ss -tlnp | grep :80
-```
-
 ### docker compose 実行時に permission denied
-
-Docker グループへの追加が反映されていない場合は `sudo` を付けて実行するか、再ログインしてください：
 
 ```bash
 sudo docker compose -f docker-compose.ubunts.yml up -d --build
