@@ -1,6 +1,7 @@
 import {
   Box, TextField, Select, MenuItem, FormControl, InputLabel,
   Button, Typography, IconButton, Badge, Tooltip, InputAdornment,
+  Chip, useTheme, useMediaQuery,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
@@ -9,6 +10,8 @@ import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import ClearIcon from '@mui/icons-material/Clear';
 import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
 import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
+import FolderOpenIcon from '@mui/icons-material/FolderOpen';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import { alpha } from '@mui/material/styles';
 import type { Group, PhotoFilter } from '../types';
 import { headerBarSx } from '../styles/albumSx';
@@ -20,13 +23,24 @@ interface Props {
   totalCount: number;
   filteredCount: number;
   isSelectMode: boolean;
+  selectedDate: { year?: number; month?: number; day?: number };
   onFilterChange: (patch: Partial<PhotoFilter>) => void;
   onClearFilter: () => void;
+  onClearDate: () => void;
   onLogout: () => void;
   onNavigateUpload: () => void;
   onNavigateGroups: () => void;
   onEnterSelectMode: () => void;
+  onToggleDateDrawer: () => void;
 }
+
+/** selectedDate を日本語ラベルに変換する */
+const formatSelectedDate = (d: { year?: number; month?: number; day?: number }): string | null => {
+  if (!d.year) return null;
+  if (d.day)   return `${d.year}年${d.month}月${d.day}日`;
+  if (d.month) return `${d.year}年${d.month}月`;
+  return `${d.year}年`;
+};
 
 export const AlbumHeader = ({
   groups,
@@ -34,24 +48,70 @@ export const AlbumHeader = ({
   totalCount,
   filteredCount,
   isSelectMode,
+  selectedDate,
   onFilterChange,
   onClearFilter,
+  onClearDate,
   onLogout,
   onNavigateUpload,
   onNavigateGroups,
   onEnterSelectMode,
+  onToggleDateDrawer,
 }: Props) => {
   const isFiltered = !!filter.keyword || !!filter.groupId;
+  const dateLabel = formatSelectedDate(selectedDate);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   return (
     <Box sx={headerBarSx}>
+      {/* スマホ：日付ツリーDrawerトグル */}
+      {isMobile && (
+        <Tooltip title="日付で絞り込み">
+          <IconButton
+            size="small"
+            onClick={onToggleDateDrawer}
+            sx={{
+              color: dateLabel ? '#a78bfa' : 'text.secondary',
+              flexShrink: 0,
+              // 日付選択中はリング強調
+              ...(dateLabel && {
+                background: alpha('#7c3aed', 0.15),
+                '&:hover': { background: alpha('#7c3aed', 0.25) },
+              }),
+            }}
+          >
+            <CalendarMonthIcon sx={{ fontSize: 22 }} />
+          </IconButton>
+        </Tooltip>
+      )}
+
       {/* ロゴ */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mr: 1 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mr: { xs: 0, sm: 1 }, flexShrink: 0 }}>
         <PhotoCameraIcon sx={{ color: '#a78bfa', fontSize: 22 }} />
         <GradientText variant="h6" fontWeight={800} sx={{ whiteSpace: 'nowrap' }}>
           PhotoDiary
         </GradientText>
       </Box>
+
+      {/* 選択中の日付フィルタ Chip */}
+      {dateLabel && (
+        <Chip
+          size="small"
+          icon={<CalendarMonthIcon sx={{ fontSize: 14, color: '#a78bfa !important' }} />}
+          label={dateLabel}
+          onDelete={onClearDate}
+          deleteIcon={<ClearIcon sx={{ fontSize: 13 }} />}
+          sx={{
+            background: alpha('#7c3aed', 0.2),
+            color: '#c4b5fd',
+            border: `1px solid ${alpha('#a78bfa', 0.4)}`,
+            flexShrink: 0,
+            maxWidth: { xs: 130, sm: 200 },
+            '& .MuiChip-deleteIcon': { color: alpha('#c4b5fd', 0.6), '&:hover': { color: '#f87171' } },
+          }}
+        />
+      )}
 
       {/* 検索 */}
       <TextField
@@ -59,7 +119,7 @@ export const AlbumHeader = ({
         placeholder="写真を検索..."
         value={filter.keyword ?? ''}
         onChange={(e) => onFilterChange({ keyword: e.target.value || undefined })}
-        sx={{ width: 200 }}
+        sx={{ width: { xs: 110, sm: 200 } }}
         InputProps={{
           startAdornment: (
             <InputAdornment position="start">
@@ -77,7 +137,7 @@ export const AlbumHeader = ({
       />
 
       {/* グループフィルター */}
-      <FormControl size="small" sx={{ minWidth: 140 }}>
+      <FormControl size="small" sx={{ minWidth: { xs: 90, sm: 140 } }}>
         <InputLabel>グループ</InputLabel>
         <Select
           label="グループ"
@@ -92,9 +152,9 @@ export const AlbumHeader = ({
         </Select>
       </FormControl>
 
-      {/* フィルタークリア */}
+      {/* キーワード・グループフィルタークリア */}
       {isFiltered && (
-        <Tooltip title="フィルターをクリア">
+        <Tooltip title="キーワード・グループをクリア">
           <Badge badgeContent="!" color="warning">
             <IconButton size="small" onClick={onClearFilter} sx={{ color: '#fbbf24' }}>
               <FilterListIcon />
@@ -103,9 +163,13 @@ export const AlbumHeader = ({
         </Tooltip>
       )}
 
-      {/* カウント */}
-      <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>
-        {isFiltered ? (
+      {/* カウント（PC のみ表示） */}
+      <Typography
+        variant="caption"
+        color="text.secondary"
+        sx={{ whiteSpace: 'nowrap', display: { xs: 'none', sm: 'block' } }}
+      >
+        {(isFiltered || dateLabel) ? (
           <>{filteredCount} / {totalCount} 件</>
         ) : (
           <>{totalCount} 件</>
@@ -115,7 +179,7 @@ export const AlbumHeader = ({
       <Box sx={{ flex: 1 }} />
 
       {/* 選択モードボタン */}
-      <Tooltip title="複数選択して削除">
+      <Tooltip title="複数選択">
         <Button
           size="small"
           variant={isSelectMode ? 'contained' : 'outlined'}
@@ -124,45 +188,58 @@ export const AlbumHeader = ({
           sx={isSelectMode ? {
             background: 'linear-gradient(135deg, #7c3aed, #a78bfa)',
             whiteSpace: 'nowrap',
+            minWidth: 0,
           } : {
             borderColor: alpha('#a78bfa', 0.35),
             color: '#a78bfa',
             whiteSpace: 'nowrap',
+            minWidth: 0,
             '&:hover': { borderColor: '#a78bfa', background: alpha('#7c3aed', 0.08) },
           }}
         >
-          選択
+          <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>選択</Box>
         </Button>
       </Tooltip>
 
-      {/* アクションボタン */}
-      <Button
-        size="small"
-        variant="outlined"
-        startIcon={<AddPhotoAlternateIcon />}
-        onClick={onNavigateUpload}
-        sx={{
-          borderColor: alpha('#a78bfa', 0.4),
-          color: '#c4b5fd',
-          whiteSpace: 'nowrap',
-          '&:hover': { borderColor: '#a78bfa', background: alpha('#7c3aed', 0.1) },
-        }}
-      >
-        写真追加
-      </Button>
-      <Button
-        size="small"
-        variant="outlined"
-        onClick={onNavigateGroups}
-        sx={{
-          borderColor: alpha('#34d399', 0.4),
-          color: '#6ee7b7',
-          whiteSpace: 'nowrap',
-          '&:hover': { borderColor: '#34d399', background: alpha('#10b981', 0.1) },
-        }}
-      >
-        グループ
-      </Button>
+      {/* 写真追加ボタン */}
+      <Tooltip title="写真を追加">
+        <Button
+          size="small"
+          variant="outlined"
+          startIcon={<AddPhotoAlternateIcon />}
+          onClick={onNavigateUpload}
+          sx={{
+            borderColor: alpha('#a78bfa', 0.4),
+            color: '#c4b5fd',
+            whiteSpace: 'nowrap',
+            minWidth: 0,
+            '&:hover': { borderColor: '#a78bfa', background: alpha('#7c3aed', 0.1) },
+          }}
+        >
+          <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>写真追加</Box>
+        </Button>
+      </Tooltip>
+
+      {/* グループボタン */}
+      <Tooltip title="グループ管理">
+        <Button
+          size="small"
+          variant="outlined"
+          startIcon={<FolderOpenIcon />}
+          onClick={onNavigateGroups}
+          sx={{
+            borderColor: alpha('#34d399', 0.4),
+            color: '#6ee7b7',
+            whiteSpace: 'nowrap',
+            minWidth: 0,
+            '&:hover': { borderColor: '#34d399', background: alpha('#10b981', 0.1) },
+          }}
+        >
+          <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>グループ</Box>
+        </Button>
+      </Tooltip>
+
+      {/* ログアウト */}
       <Tooltip title="ログアウト">
         <IconButton size="small" onClick={onLogout} sx={{ color: 'text.secondary', '&:hover': { color: '#f87171' } }}>
           <LogoutIcon />

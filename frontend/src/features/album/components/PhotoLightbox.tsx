@@ -3,7 +3,7 @@ import {
   Box, IconButton, Typography, Chip, Divider, Button,
   TextField, Select, MenuItem, FormControl, InputLabel,
   Dialog, DialogTitle, DialogContent, DialogActions,
-  Tooltip, CircularProgress,
+  Tooltip, CircularProgress, useTheme, useMediaQuery,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import EditIcon from '@mui/icons-material/Edit';
@@ -42,6 +42,8 @@ export const PhotoLightbox = ({ photos, currentIndex, groups, onClose, onUpdate,
   const [idx, setIdx] = useState(currentIndex);
   const photo = photos[idx];
   const group = groups.find((g) => g.groupId === photo?.groupId);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -91,7 +93,7 @@ export const PhotoLightbox = ({ photos, currentIndex, groups, onClose, onUpdate,
 
   const handleSave = async () => {
     setSaving(true);
-    await new Promise((r) => setTimeout(r, 400)); // モックディレイ
+    await new Promise((r) => setTimeout(r, 400));
     onUpdate({
       ...photo,
       description: form.description || undefined,
@@ -113,24 +115,41 @@ export const PhotoLightbox = ({ photos, currentIndex, groups, onClose, onUpdate,
     <>
       <Box sx={lightboxOverlaySx} onClick={onClose}>
         <Box
-          sx={{ display: 'flex', gap: 2, maxWidth: '90vw', maxHeight: '90vh', p: 2 }}
+          sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', md: 'row' },
+            gap: { xs: 0, md: 2 },
+            width: { xs: '100%', md: 'auto' },
+            maxWidth: { xs: '100%', md: '90vw' },
+            maxHeight: { xs: '100dvh', md: '90vh' },
+            overflow: 'hidden',
+          }}
           onClick={(e) => e.stopPropagation()}
         >
           {/* 画像エリア */}
           <Box
             sx={{
               position: 'relative',
-              maxHeight: '85vh',
-              borderRadius: 3,
+              borderRadius: { xs: 0, md: 3 },
               overflow: 'hidden',
               boxShadow: `0 24px 64px ${alpha('#000', 0.7)}`,
               flexShrink: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: 'rgba(0,0,0,0.5)',
+              minHeight: { xs: '40dvh', md: 'auto' },
             }}
           >
             <HeicSafeImage
               src={photo.filePath}
               alt={photo.description}
-              sx={{ maxHeight: '85vh', maxWidth: '60vw', objectFit: 'contain', display: 'block' }}
+              sx={{
+                maxHeight: { xs: '50dvh', md: '85vh' },
+                maxWidth: { xs: '100vw', md: '60vw' },
+                objectFit: 'contain',
+                display: 'block',
+              }}
             />
 
             {/* 閉じるボタン */}
@@ -209,12 +228,14 @@ export const PhotoLightbox = ({ photos, currentIndex, groups, onClose, onUpdate,
           {/* 詳細パネル */}
           <GlassCard
             sx={{
-              width: 300,
+              width: { xs: '100%', md: 300 },
+              maxHeight: { xs: '50dvh', md: 'none' },
               p: 0,
               display: 'flex',
               flexDirection: 'column',
               overflowY: 'auto',
               flexShrink: 0,
+              borderRadius: { xs: '0 0 0 0', md: 4 },
             }}
           >
             {/* パネルヘッダー */}
@@ -237,10 +258,7 @@ export const PhotoLightbox = ({ photos, currentIndex, groups, onClose, onUpdate,
                       <IconButton
                         size="small"
                         onClick={startEdit}
-                        sx={{
-                          color: '#a78bfa',
-                          '&:hover': { background: alpha('#7c3aed', 0.15) },
-                        }}
+                        sx={{ color: '#a78bfa', '&:hover': { background: alpha('#7c3aed', 0.15) } }}
                       >
                         <EditIcon sx={{ fontSize: 17 }} />
                       </IconButton>
@@ -249,14 +267,21 @@ export const PhotoLightbox = ({ photos, currentIndex, groups, onClose, onUpdate,
                       <IconButton
                         size="small"
                         onClick={() => setDeleteOpen(true)}
-                        sx={{
-                          color: '#f87171',
-                          '&:hover': { background: alpha('#ef4444', 0.15) },
-                        }}
+                        sx={{ color: '#f87171', '&:hover': { background: alpha('#ef4444', 0.15) } }}
                       >
                         <DeleteIcon sx={{ fontSize: 17 }} />
                       </IconButton>
                     </Tooltip>
+                    {/* スマホ：閉じるボタンをパネルヘッダーにも配置 */}
+                    {isMobile && (
+                      <IconButton
+                        size="small"
+                        onClick={onClose}
+                        sx={{ color: 'text.secondary', ml: 0.5 }}
+                      >
+                        <CloseIcon sx={{ fontSize: 17 }} />
+                      </IconButton>
+                    )}
                   </>
                 ) : (
                   <>
@@ -271,11 +296,7 @@ export const PhotoLightbox = ({ photos, currentIndex, groups, onClose, onUpdate,
                       </IconButton>
                     </Tooltip>
                     <Tooltip title="キャンセル">
-                      <IconButton
-                        size="small"
-                        onClick={cancelEdit}
-                        sx={{ color: 'text.secondary' }}
-                      >
+                      <IconButton size="small" onClick={cancelEdit} sx={{ color: 'text.secondary' }}>
                         <CloseIcon sx={{ fontSize: 17 }} />
                       </IconButton>
                     </Tooltip>
@@ -479,7 +500,8 @@ export const PhotoLightbox = ({ photos, currentIndex, groups, onClose, onUpdate,
             backdropFilter: 'blur(24px)',
             border: `1px solid ${alpha('#f87171', 0.3)}`,
             borderRadius: 3,
-            minWidth: 340,
+            minWidth: { xs: 'calc(100vw - 48px)', sm: 340 },
+            mx: { xs: 3, sm: 'auto' },
           },
         }}
       >
@@ -491,10 +513,7 @@ export const PhotoLightbox = ({ photos, currentIndex, groups, onClose, onUpdate,
           </Typography>
         </DialogContent>
         <DialogActions sx={{ p: 2, gap: 1 }}>
-          <Button
-            onClick={() => setDeleteOpen(false)}
-            sx={{ color: 'text.secondary' }}
-          >
+          <Button onClick={() => setDeleteOpen(false)} sx={{ color: 'text.secondary' }}>
             キャンセル
           </Button>
           <Button

@@ -26,7 +26,8 @@ export const orbitSx = (size: number, color: string, top: string, left: string):
 export const loginCardSx: SxProps<Theme> = {
   width: '100%',
   maxWidth: 440,
-  p: 5,
+  mx: { xs: 2, sm: 0 },
+  p: { xs: 3, sm: 5 },
   borderRadius: 4,
   background: 'rgba(30, 27, 75, 0.55)',
   backdropFilter: 'blur(32px)',

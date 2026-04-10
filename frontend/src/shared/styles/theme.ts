@@ -44,9 +44,13 @@ export const theme = createTheme({
   components: {
     MuiCssBaseline: {
       styleOverrides: {
+        '*, *::before, *::after': {
+          WebkitTapHighlightColor: 'transparent',
+        },
         body: {
           background: 'linear-gradient(135deg, #0a0a1a 0%, #0d0b2e 40%, #130a1f 100%)',
-          minHeight: '100vh',
+          minHeight: '100dvh',
+          overscrollBehavior: 'none',
           '&::-webkit-scrollbar': { width: 6 },
           '&::-webkit-scrollbar-track': { background: 'transparent' },
           '&::-webkit-scrollbar-thumb': {

@@ -1,4 +1,4 @@
-import { Box, Typography, Button, IconButton, Tooltip, CircularProgress } from '@mui/material';
+import { Box, Typography, Button, IconButton, Tooltip, CircularProgress, useTheme, useMediaQuery } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import DownloadIcon from '@mui/icons-material/Download';
@@ -34,6 +34,8 @@ export const BulkActionBar = ({
   downloadProgress = null,
 }: Props) => {
   const allSelected = selectedCount === totalCount && totalCount > 0;
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   return (
     <Box sx={bulkActionBarSx}>
@@ -53,13 +55,29 @@ export const BulkActionBar = ({
       </Tooltip>
 
       {/* カウント / ダウンロード進捗 */}
-      <Typography variant="body2" fontWeight={600} sx={{ color: selectedCount > 0 ? '#c4b5fd' : 'text.secondary', minWidth: 120 }}>
+      <Typography
+        variant="body2"
+        fontWeight={600}
+        sx={{
+          color: selectedCount > 0 ? '#c4b5fd' : 'text.secondary',
+          minWidth: { xs: 'auto', sm: 120 },
+          fontSize: { xs: '0.75rem', sm: '0.875rem' },
+        }}
+      >
         {downloading && downloadProgress ? (
-          <><span style={{ color: '#34d399' }}>{downloadProgress.done}</span> / {downloadProgress.total} 枚をZIPに追加中</>
+          isMobile ? (
+            <><span style={{ color: '#34d399' }}>{downloadProgress.done}</span>/{downloadProgress.total}</>
+          ) : (
+            <><span style={{ color: '#34d399' }}>{downloadProgress.done}</span> / {downloadProgress.total} 枚をZIPに追加中</>
+          )
         ) : selectedCount > 0 ? (
-          <><span style={{ color: '#a78bfa' }}>{selectedCount}</span> 枚選択中</>
+          isMobile ? (
+            <><span style={{ color: '#a78bfa' }}>{selectedCount}</span>枚</>
+          ) : (
+            <><span style={{ color: '#a78bfa' }}>{selectedCount}</span> 枚選択中</>
+          )
         ) : (
-          '写真を選択してください'
+          isMobile ? '選択' : '写真を選択してください'
         )}
       </Typography>
 
@@ -76,11 +94,12 @@ export const BulkActionBar = ({
             ? 'linear-gradient(135deg, #7c3aed, #a78bfa)'
             : undefined,
           boxShadow: selectedCount > 0 ? `0 4px 16px ${alpha('#7c3aed', 0.4)}` : undefined,
-          px: 2,
+          px: { xs: 1, sm: 2 },
+          minWidth: 0,
           '&:hover': { boxShadow: `0 4px 20px ${alpha('#7c3aed', 0.6)}` },
         }}
       >
-        一括編集
+        <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>一括編集</Box>
       </Button>
 
       {/* ダウンロードボタン */}
@@ -96,11 +115,14 @@ export const BulkActionBar = ({
             ? 'linear-gradient(135deg, #0369a1, #38bdf8)'
             : undefined,
           boxShadow: selectedCount > 0 ? `0 4px 16px ${alpha('#0369a1', 0.4)}` : undefined,
-          px: 2,
+          px: { xs: 1, sm: 2 },
+          minWidth: 0,
           '&:hover': { boxShadow: `0 4px 20px ${alpha('#0369a1', 0.6)}` },
         }}
       >
-        {downloading ? 'ZIP作成中...' : 'ZIPダウンロード'}
+        <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+          {downloading ? 'ZIP作成中...' : 'ZIPダウンロード'}
+        </Box>
       </Button>
 
       {/* 削除ボタン */}
@@ -116,11 +138,12 @@ export const BulkActionBar = ({
             ? 'linear-gradient(135deg, #dc2626, #f87171)'
             : undefined,
           boxShadow: selectedCount > 0 ? `0 4px 16px ${alpha('#dc2626', 0.4)}` : undefined,
-          px: 2,
+          px: { xs: 1, sm: 2 },
+          minWidth: 0,
           '&:hover': { boxShadow: `0 4px 20px ${alpha('#dc2626', 0.6)}` },
         }}
       >
-        削除
+        <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>削除</Box>
       </Button>
 
       {/* 終了 */}

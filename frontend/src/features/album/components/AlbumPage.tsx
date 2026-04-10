@@ -1,4 +1,11 @@
-import { Box, Typography, Dialog, DialogTitle, DialogContent, DialogActions, Button, CircularProgress, Alert } from '@mui/material';
+import {
+  Box, Typography, Dialog, DialogTitle, DialogContent, DialogActions,
+  Button, CircularProgress, Alert, Drawer, Chip,
+  useTheme, useMediaQuery,
+} from '@mui/material';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+import ClearIcon from '@mui/icons-material/Clear';
+import { alpha } from '@mui/material/styles';
 import { Grid } from '@mui/material';
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -14,15 +21,18 @@ import { BulkActionBar } from './BulkActionBar';
 import { BulkEditDialog } from './BulkEditDialog';
 import { downloadPhotosAsZip } from '../utils/downloadUtils';
 import { sidebarSx, photoGridSx } from '../styles/albumSx';
-import { alpha } from '@mui/material/styles';
 
 export const AlbumPage = () => {
   const navigate = useNavigate();
   const { logout } = useAuth();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState<{ done: number; total: number } | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const {
     photos,
@@ -71,6 +81,60 @@ export const AlbumPage = () => {
     setDownloadProgress(null);
   }, [filteredPhotos, selectedIds]);
 
+  /** selectedDate を日本語ラベルに変換する */
+  const formatDateLabel = (d: typeof selectedDate): string | null => {
+    if (!d.year) return null;
+    if (d.day)   return `${d.year}年${d.month}月${d.day}日`;
+    if (d.month) return `${d.year}年${d.month}月`;
+    return `${d.year}年`;
+  };
+  const dateLabel = formatDateLabel(selectedDate);
+
+  // 日付ツリーの中身（PC サイドバー / スマホ Drawer 共用）
+  const dateTreeContent = (
+    <>
+      {/* ヘッダー行：タイトル + 選択中の日付 Chip */}
+      <Box sx={{ px: 1.5, py: 0.5, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+        <Typography
+          variant="caption"
+          color="text.disabled"
+          sx={{ fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', flexShrink: 0 }}
+        >
+          日付で絞り込み
+        </Typography>
+        {dateLabel && (
+          <Chip
+            size="small"
+            icon={<CalendarMonthIcon sx={{ fontSize: 12, color: '#a78bfa !important' }} />}
+            label={dateLabel}
+            onDelete={() => selectDate()}
+            deleteIcon={<ClearIcon sx={{ fontSize: 11 }} />}
+            sx={{
+              height: 20,
+              fontSize: '0.7rem',
+              background: alpha('#7c3aed', 0.2),
+              color: '#c4b5fd',
+              border: `1px solid ${alpha('#a78bfa', 0.4)}`,
+              '& .MuiChip-deleteIcon': { color: alpha('#c4b5fd', 0.6), '&:hover': { color: '#f87171' } },
+              '& .MuiChip-label': { px: 0.8 },
+            }}
+          />
+        )}
+      </Box>
+      <Box sx={{ mt: 0.5 }}>
+        <DateTree
+          dateTree={dateTree}
+          selectedDate={selectedDate}
+          expandedYears={expandedYears}
+          expandedMonths={expandedMonths}
+          onSelectDate={(y, m, d) => { selectDate(y, m, d); if (isMobile) setDrawerOpen(false); }}
+          onToggleYear={toggleYear}
+          onToggleMonth={toggleMonth}
+        />
+      </Box>
+    </>
+  );
+
   return (
     <Box sx={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0a0a1a 0%, #0d0b2e 50%, #130a1f 100%)' }}>
       {/* ヘッダー */}
@@ -80,39 +144,47 @@ export const AlbumPage = () => {
         totalCount={photos.length}
         filteredCount={filteredPhotos.length}
         isSelectMode={isSelectMode}
+        selectedDate={selectedDate}
         onFilterChange={updateFilter}
         onClearFilter={clearFilter}
+        onClearDate={() => selectDate()}
         onLogout={logout}
         onNavigateUpload={() => navigate('/upload')}
         onNavigateGroups={() => navigate('/photo-groups')}
         onEnterSelectMode={enterSelectMode}
+        onToggleDateDrawer={() => setDrawerOpen((o) => !o)}
       />
 
       {/* メインコンテンツ */}
       <Box sx={{ display: 'flex' }}>
-        {/* 左：日付ツリー */}
-        <Box sx={sidebarSx}>
-          <Typography
-            variant="caption"
-            color="text.disabled"
-            sx={{ px: 1.5, py: 0.5, display: 'block', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}
-          >
-            日付で絞り込み
-          </Typography>
-          <Box sx={{ mt: 1 }}>
-            <DateTree
-              dateTree={dateTree}
-              selectedDate={selectedDate}
-              expandedYears={expandedYears}
-              expandedMonths={expandedMonths}
-              onSelectDate={selectDate}
-              onToggleYear={toggleYear}
-              onToggleMonth={toggleMonth}
-            />
+        {/* PC：固定サイドバー */}
+        {!isMobile && (
+          <Box sx={sidebarSx}>
+            {dateTreeContent}
           </Box>
-        </Box>
+        )}
 
-        {/* 右：写真グリッド */}
+        {/* スマホ：Drawer サイドバー */}
+        {isMobile && (
+          <Drawer
+            anchor="left"
+            open={drawerOpen}
+            onClose={() => setDrawerOpen(false)}
+            PaperProps={{
+              sx: {
+                width: 260,
+                background: 'rgba(10,10,26,0.97)',
+                backdropFilter: 'blur(20px)',
+                borderRight: `1px solid ${alpha('#a78bfa', 0.15)}`,
+                p: 1,
+              },
+            }}
+          >
+            {dateTreeContent}
+          </Drawer>
+        )}
+
+        {/* 写真グリッド */}
         <Box sx={photoGridSx}>
           {/* ローディング・エラー表示 */}
           {loading && (
@@ -142,9 +214,9 @@ export const AlbumPage = () => {
               </Typography>
             </Box>
           ) : !loading && (
-            <Grid container spacing={2}>
+            <Grid container spacing={{ xs: 1, sm: 2 }}>
               {filteredPhotos.map((photo) => (
-                <Grid key={photo.photoId} size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
+                <Grid key={photo.photoId} size={{ xs: 6, sm: 6, md: 4, lg: 3 }}>
                   <PhotoCard
                     photo={photo}
                     isSelectMode={isSelectMode}
@@ -220,7 +292,8 @@ export const AlbumPage = () => {
             backdropFilter: 'blur(24px)',
             border: `1px solid ${alpha('#f87171', 0.3)}`,
             borderRadius: 3,
-            minWidth: 340,
+            minWidth: { xs: 'calc(100vw - 48px)', sm: 340 },
+            mx: { xs: 3, sm: 'auto' },
           },
         }}
       >
