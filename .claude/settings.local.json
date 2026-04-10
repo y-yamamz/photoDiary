@@ -8,7 +8,8 @@
       "Bash(npx tsc:*)",
       "Bash(grep -E \"^/|\\\\.java$\")",
       "Bash(powershell:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(./gradlew compileJava -q)"
     ]
   }
 }

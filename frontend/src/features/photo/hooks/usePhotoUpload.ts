@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import type { UploadFormValues, UploadState } from '../types';
-import { validateImageFile, createPreviewUrl, revokePreviewUrl, readExifDate, convertHeicToJpeg } from '../utils/fileUtils';
+import { validateImageFile, createPreviewUrl, revokePreviewUrl, readExifDate, convertHeic, formatFileSize, MAX_CONVERT_FILES, MAX_CONVERT_TOTAL_SIZE } from '../utils/fileUtils';
 import { albumApi } from '../../album/api/albumApi';
 import { photoApi } from '../api/photoApi';
 import { extractApiError } from '../../../shared/api/apiClient';
@@ -18,12 +18,15 @@ const defaultForm = (): UploadFormValues => ({
   files: [],
   groupId: '',
   takenAt: localDatetimeString(),
+  overrideTakenAt: false,
   location: '',
   description: '',
+  convertFormat: 'none',
 });
 
 const defaultState = (): UploadState => ({
   previews: [],
+  exifDates: [],
   uploading: false,
   converting: false,
   convertDone: 0,
@@ -46,11 +49,11 @@ export const usePhotoUpload = () => {
       .catch(() => setGroups([]));
   }, []);
 
-  // 複数ファイルをセット（HEIC は JPEG に変換してからプレビュー生成）
+  // 複数ファイルをセット（バリデーションのみ、変換は convertFiles で行う）
   const setFiles = useCallback(async (files: File[]) => {
     setState((s) => {
       s.previews.forEach(revokePreviewUrl);
-      return { ...s, previews: [], error: null, converting: false };
+      return { ...s, previews: [], exifDates: [], error: null, converting: false };
     });
 
     const errors: string[] = [];
@@ -66,16 +69,60 @@ export const usePhotoUpload = () => {
       return;
     }
 
-    // HEIC ファイルが含まれている場合は変換中フラグを立てる
-    const heicCount = valid.filter((f) => /\.heic$/i.test(f.name)).length;
-    if (heicCount > 0) {
-      setState((s) => ({ ...s, converting: true, convertDone: 0, convertTotal: heicCount, convertProgress: 0 }));
+    const previews = valid.map(createPreviewUrl);
+    setForm((f) => ({ ...f, files: valid, overrideTakenAt: false }));
+    setState((s) => ({
+      ...s,
+      previews,
+      error: errors.length > 0 ? errors.join('\n') : null,
+    }));
+
+    // 全ファイルの EXIF 撮影日時を並列取得
+    const rawDates = await Promise.all(valid.map((f) => readExifDate(f)));
+    const exifDates = rawDates.map((d) => d ?? '');
+    setState((s) => ({ ...s, exifDates }));
+
+    // 単体の場合は takenAt にも反映
+    if (valid.length === 1 && exifDates[0]) {
+      setForm((f) => ({ ...f, takenAt: exifDates[0] }));
     }
+  }, []);
+
+  // 変換ボタン押下時: HEIC ファイルを指定形式に変換する
+  const convertFiles = useCallback(async () => {
+    const files = form.files;
+    if (files.length === 0 || form.convertFormat === 'none') return;
+
+    const heicFiles = files.filter((f) => /\.heic$/i.test(f.name));
+    if (heicFiles.length === 0) return;
+
+    // 一括変換の制限チェック
+    if (heicFiles.length > MAX_CONVERT_FILES) {
+      setState((s) => ({
+        ...s,
+        error: `一括変換できるのは ${MAX_CONVERT_FILES} 枚までです（HEIC ファイル: ${heicFiles.length} 枚）`,
+      }));
+      return;
+    }
+    const totalSize = heicFiles.reduce((sum, f) => sum + f.size, 0);
+    if (totalSize > MAX_CONVERT_TOTAL_SIZE) {
+      setState((s) => ({
+        ...s,
+        error: `変換対象の合計サイズは ${formatFileSize(MAX_CONVERT_TOTAL_SIZE)} 以下にしてください（現在: ${formatFileSize(totalSize)}）`,
+      }));
+      return;
+    }
+
+    const heicCount = heicFiles.length;
+    setState((s) => {
+      s.previews.forEach(revokePreviewUrl);
+      return { ...s, previews: [], converting: true, convertDone: 0, convertTotal: heicCount, convertProgress: 0, error: null };
+    });
 
     try {
       let done = 0;
-      const converted = await Promise.all(valid.map(async (f) => {
-        const result = await convertHeicToJpeg(f);
+      const converted = await Promise.all(files.map(async (f) => {
+        const result = await convertHeic(f, form.convertFormat);
         if (/\.heic$/i.test(f.name)) {
           done++;
           setState((s) => ({ ...s, convertDone: done, convertProgress: Math.round((done / heicCount) * 100) }));
@@ -84,31 +131,21 @@ export const usePhotoUpload = () => {
       }));
       const previews = converted.map(createPreviewUrl);
       setForm((f) => ({ ...f, files: converted }));
-      setState((s) => ({
-        ...s,
-        previews,
-        converting: false,
-        error: errors.length > 0 ? errors.join('\n') : null,
-      }));
-
-      // 最初のファイルの EXIF 撮影日時を自動セット
-      readExifDate(converted[0]).then((exifDate) => {
-        if (exifDate) setForm((f) => ({ ...f, takenAt: exifDate }));
-      });
+      setState((s) => ({ ...s, previews, converting: false }));
     } catch {
-      setState((s) => ({
-        ...s,
-        converting: false,
-        error: 'HEIC の変換に失敗しました',
-      }));
+      setState((s) => ({ ...s, converting: false, error: 'HEIC の変換に失敗しました' }));
     }
-  }, []);
+  }, [form.files, form.convertFormat]);
 
   // 個別ファイルを削除
   const removeFile = useCallback((index: number) => {
     setState((s) => {
       revokePreviewUrl(s.previews[index]);
-      return { ...s, previews: s.previews.filter((_, i) => i !== index) };
+      return {
+        ...s,
+        previews: s.previews.filter((_, i) => i !== index),
+        exifDates: s.exifDates.filter((_, i) => i !== index),
+      };
     });
     setForm((f) => ({ ...f, files: f.files.filter((_, i) => i !== index) }));
   }, []);
@@ -122,8 +159,6 @@ export const usePhotoUpload = () => {
     setState((s) => ({ ...s, uploading: true, progress: 0, success: false, error: null }));
 
     try {
-      const onProgress = (pct: number) => setState((s) => ({ ...s, progress: pct }));
-
       if (form.files.length === 1) {
         // 単体アップロード
         const fd = new FormData();
@@ -132,16 +167,32 @@ export const usePhotoUpload = () => {
         if (form.takenAt)        fd.append('takenAt', form.takenAt);
         if (form.location)       fd.append('location', form.location);
         if (form.description)    fd.append('description', form.description);
-        await photoApi.upload(fd, onProgress);
-      } else {
-        // 一括アップロード
+        await photoApi.upload(fd, (pct) => setState((s) => ({ ...s, progress: pct })));
+      } else if (form.overrideTakenAt) {
+        // 複数ファイル・日付一括指定: 全ファイルに同じ日付でバルクアップロード
         const fd = new FormData();
         form.files.forEach((f) => fd.append('files', f));
         if (form.groupId !== '') fd.append('groupId', String(form.groupId));
         if (form.takenAt)        fd.append('takenAt', form.takenAt);
         if (form.location)       fd.append('location', form.location);
         if (form.description)    fd.append('description', form.description);
-        await photoApi.bulkUpload(fd, onProgress);
+        await photoApi.bulkUpload(fd, (pct) => setState((s) => ({ ...s, progress: pct })));
+      } else {
+        // 複数ファイル・個別EXIF日付: 1枚ずつ個別アップロード
+        const total = form.files.length;
+        for (let i = 0; i < total; i++) {
+          const fd = new FormData();
+          fd.append('file', form.files[i]);
+          if (form.groupId !== '') fd.append('groupId', String(form.groupId));
+          const takenAt = state.exifDates[i] || localDatetimeString();
+          fd.append('takenAt', takenAt);
+          if (form.location)    fd.append('location', form.location);
+          if (form.description) fd.append('description', form.description);
+          await photoApi.upload(fd, (pct) => {
+            // 全体進捗 = (完了枚数 + 現在枚数の進捗率) / 総枚数
+            setState((s) => ({ ...s, progress: Math.round(((i + pct / 100) / total) * 100) }));
+          });
+        }
       }
 
       setState((s) => ({ ...s, uploading: false, success: true, previews: [] }));
@@ -154,7 +205,7 @@ export const usePhotoUpload = () => {
         error: extractApiError(err),
       }));
     }
-  }, [form]);
+  }, [form, state.exifDates]);
 
   const reset = useCallback(() => {
     setState((s) => {
@@ -170,5 +221,5 @@ export const usePhotoUpload = () => {
     };
   }, []); // eslint-disable-line
 
-  return { form, state, groups, setFiles, removeFile, updateField, submit, reset };
+  return { form, state, groups, setFiles, convertFiles, removeFile, updateField, submit, reset };
 };

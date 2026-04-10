@@ -8,12 +8,12 @@ export default defineConfig({
     proxy: {
       // /api/* → Spring Boot (localhost:8080)
       '/api': {
-        target: 'http://localhost:8080',
+        target: 'http://192.168.0.10:8080',
         changeOrigin: true,
       },
       // 画像ファイル配信
       '/images': {
-        target: 'http://localhost:8080',
+        target: 'http://192.168.0.10:8080',
         changeOrigin: true,
       },
     },

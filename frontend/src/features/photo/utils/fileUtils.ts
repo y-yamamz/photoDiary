@@ -27,7 +27,26 @@ export const createPreviewUrl = (file: File): string =>
 export const revokePreviewUrl = (url: string) =>
   URL.revokeObjectURL(url);
 
-// ─── HEIC → JPEG 変換 ──────────────────────────────────────────
+// ─── HEIC 変換 ─────────────────────────────────────────────────
+
+import type { ConvertFormat } from '../types';
+
+// 一括変換の上限
+export const MAX_CONVERT_FILES = 50;
+export const MAX_CONVERT_TOTAL_SIZE = 500 * 1024 * 1024; // 500MB
+
+type ConvertableFormat = Exclude<ConvertFormat, 'none'>;
+
+const FORMAT_MIME: Record<ConvertableFormat, string> = {
+  jpeg: 'image/jpeg',
+  png:  'image/png',
+  webp: 'image/webp',
+};
+const FORMAT_EXT: Record<ConvertableFormat, string> = {
+  jpeg: '.jpg',
+  png:  '.png',
+  webp: '.webp',
+};
 
 type Heic2AnyFn = (opts: { blob: Blob; toType: string; quality: number }) => Promise<Blob | Blob[]>;
 
@@ -39,16 +58,20 @@ const loadHeic2any = async (): Promise<Heic2AnyFn> => {
 };
 
 /**
- * HEIC ファイルを JPEG の File オブジェクトに変換する。
- * HEIC 以外はそのまま返す。
+ * HEIC ファイルを指定形式の File オブジェクトに変換する。
+ * format が 'none' または HEIC 以外のファイルはそのまま返す。
+ * 変換後のファイル名は拡張子のみ変更し、ベース名は保持する。
  */
-export const convertHeicToJpeg = async (file: File): Promise<File> => {
+export const convertHeic = async (file: File, format: ConvertFormat = 'none'): Promise<File> => {
+  if (format === 'none') return file;
   if (!getExtension(file.name).match(/^\.heic$/i)) return file;
+  const fmt = format as ConvertableFormat;
   const heic2any = await loadHeic2any();
-  const converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 });
-  const jpegBlob = Array.isArray(converted) ? converted[0] : converted;
-  const jpegName = file.name.replace(/\.heic$/i, '.jpg');
-  return new File([jpegBlob], jpegName, { type: 'image/jpeg' });
+  const converted = await heic2any({ blob: file, toType: FORMAT_MIME[fmt], quality: 0.9 });
+  const blob = Array.isArray(converted) ? converted[0] : converted;
+  const baseName = file.name.slice(0, file.name.lastIndexOf('.'));
+  const newName = baseName + FORMAT_EXT[fmt];
+  return new File([blob], newName, { type: FORMAT_MIME[fmt] });
 };
 
 // ─── EXIF 撮影日時読み取り ──────────────────────────────────────

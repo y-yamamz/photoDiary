@@ -24,7 +24,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.UUID;
 
 /**
  * 写真のCRUD・一括操作・ファイルストレージ管理サービス。
@@ -144,6 +143,8 @@ public class PhotoService {
 
     /**
      * ファイルをストレージに保存し、DBに登録するパス（/images/...）を返す。
+     * ファイル名は元のベース名を保持し、拡張子のみ変更する。
+     * 同名ファイルが存在する場合は _1, _2, ... を付けて回避する。
      */
     private String saveFile(MultipartFile file, Long userId) {
         try {
@@ -151,18 +152,27 @@ public class PhotoService {
             String year  = String.format("%04d", now.getYear());
             String month = String.format("%02d", now.getMonthValue());
             String day   = String.format("%02d", now.getDayOfMonth());
-            String ext   = getExtension(file.getOriginalFilename());
-            String uuid  = UUID.randomUUID().toString();
+            String ext      = getExtension(file.getOriginalFilename());
+            String baseName = getBaseName(file.getOriginalFilename());
 
             // 保存先ディレクトリ: {storagePath}/{userId}/{yyyy}/{MM}/{dd}/
             Path dir = Paths.get(storagePath, userId.toString(), year, month, day);
             Files.createDirectories(dir);
 
-            Path dest = dir.resolve(uuid + ext);
+            // 同名ファイルが存在する場合は _1, _2, ... を付けて回避
+            Path dest = dir.resolve(baseName + ext);
+            if (Files.exists(dest)) {
+                int count = 1;
+                while (Files.exists(dir.resolve(baseName + "_" + count + ext))) {
+                    count++;
+                }
+                dest = dir.resolve(baseName + "_" + count + ext);
+            }
             file.transferTo(dest);
 
+            String savedName = dest.getFileName().toString();
             // クライアントからアクセスするURLパス
-            return "/images/" + userId + "/" + year + "/" + month + "/" + day + "/" + uuid + ext;
+            return "/images/" + userId + "/" + year + "/" + month + "/" + day + "/" + savedName;
         } catch (IOException e) {
             throw new AppException(HttpStatus.INTERNAL_SERVER_ERROR, "ファイルの保存に失敗しました");
         }
@@ -188,6 +198,12 @@ public class PhotoService {
     private String getExtension(String fileName) {
         if (fileName == null || !fileName.contains(".")) return ".jpg";
         return fileName.substring(fileName.lastIndexOf('.'));
+    }
+
+    private String getBaseName(String fileName) {
+        if (fileName == null || fileName.isEmpty()) return "photo";
+        int lastDot = fileName.lastIndexOf('.');
+        return lastDot > 0 ? fileName.substring(0, lastDot) : fileName;
     }
 
     private Photos buildPhoto(Long userId, String originalName, String filePath,

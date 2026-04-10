@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import {
   Box, Typography, Button, TextField, Select, MenuItem,
   FormControl, InputLabel, LinearProgress, Alert, Chip,
-  IconButton, Tooltip, CircularProgress,
+  IconButton, Tooltip, CircularProgress, Checkbox, FormControlLabel,
 } from '@mui/material';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -12,6 +12,7 @@ import LocationOnIcon from '@mui/icons-material/LocationOn';
 import EventIcon from '@mui/icons-material/Event';
 import ImageIcon from '@mui/icons-material/Image';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import TransformIcon from '@mui/icons-material/Transform';
 import { useNavigate } from 'react-router-dom';
 import { usePhotoUpload } from '../hooks/usePhotoUpload';
 import { uploadPageSx, dropzoneSx, progressBarSx } from '../styles/uploadSx';
@@ -24,7 +25,7 @@ export const UploadPage = () => {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const { form, state, groups, setFiles, removeFile, updateField, submit, reset } = usePhotoUpload();
+  const { form, state, groups, setFiles, convertFiles, removeFile, updateField, submit, reset } = usePhotoUpload();
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
@@ -178,7 +179,7 @@ export const UploadPage = () => {
               <Box sx={{ mt: 2 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
                   <Typography variant="caption" color="#c4b5fd">
-                    HEIC → JPEG に変換中... ({state.convertDone}/{state.convertTotal}枚)
+                    HEIC → {form.convertFormat.toUpperCase()} に変換中... ({state.convertDone}/{state.convertTotal}枚)
                   </Typography>
                   <Typography variant="caption" color="#a78bfa">{state.convertProgress}%</Typography>
                 </Box>
@@ -238,17 +239,42 @@ export const UploadPage = () => {
                 </Select>
               </FormControl>
 
+              {form.files.length > 1 && (
+                <FormControlLabel
+                  sx={{ ml: 0, mt: -1 }}
+                  control={
+                    <Checkbox
+                      size="small"
+                      checked={form.overrideTakenAt}
+                      onChange={(e) => updateField('overrideTakenAt', e.target.checked)}
+                      sx={{ color: alpha('#a78bfa', 0.5), '&.Mui-checked': { color: '#a78bfa' } }}
+                    />
+                  }
+                  label={
+                    <Typography variant="caption" color={form.overrideTakenAt ? '#c4b5fd' : 'text.disabled'}>
+                      日付を一括指定する（チェックOFFは各写真のEXIF日付を使用）
+                    </Typography>
+                  }
+                />
+              )}
+
               <TextField
                 label="撮影日時"
                 type="datetime-local"
                 size="small"
                 value={form.takenAt}
                 onChange={(e) => updateField('takenAt', e.target.value)}
+                disabled={form.files.length > 1 && !form.overrideTakenAt}
                 InputProps={{
                   startAdornment: <EventIcon sx={{ mr: 1, color: 'text.secondary', fontSize: 18 }} />,
                 }}
                 InputLabelProps={{ shrink: true }}
                 fullWidth
+                helperText={
+                  form.files.length > 1 && !form.overrideTakenAt
+                    ? '各写真のEXIF日付を個別に使用します'
+                    : undefined
+                }
               />
 
               <TextField
@@ -273,6 +299,36 @@ export const UploadPage = () => {
                 placeholder="写真についての説明を入力..."
                 fullWidth
               />
+
+              <FormControl fullWidth size="small">
+                <InputLabel>HEIC 変換形式</InputLabel>
+                <Select
+                  label="HEIC 変換形式"
+                  value={form.convertFormat}
+                  onChange={(e) => updateField('convertFormat', e.target.value as 'none' | 'jpeg' | 'png' | 'webp')}
+                  startAdornment={<TransformIcon sx={{ mr: 1, color: 'text.secondary', fontSize: 18 }} />}
+                >
+                  <MenuItem value="none">変換なし</MenuItem>
+                  <MenuItem value="jpeg">JPEG (.jpg)</MenuItem>
+                  <MenuItem value="png">PNG (.png)</MenuItem>
+                  <MenuItem value="webp">WebP (.webp)</MenuItem>
+                </Select>
+              </FormControl>
+
+              {form.files.some((f) => /\.heic$/i.test(f.name)) && form.convertFormat !== 'none' && (
+                <Button
+                  variant="outlined"
+                  fullWidth
+                  onClick={convertFiles}
+                  disabled={state.converting || state.uploading}
+                  startIcon={state.converting ? <CircularProgress size={18} color="inherit" /> : <TransformIcon />}
+                  sx={{ borderColor: alpha('#a78bfa', 0.4), color: '#c4b5fd' }}
+                >
+                  {state.converting
+                    ? `変換中... (${state.convertDone}/${state.convertTotal}枚)`
+                    : 'HEICを変換する'}
+                </Button>
+              )}
 
               <Box sx={{ display: 'flex', gap: 1.5, mt: 1 }}>
                 <Button
