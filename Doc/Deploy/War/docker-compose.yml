@@ -46,8 +46,8 @@ services:
       - TZ=Asia/Tokyo
       - JAVA_OPTS=-Dfile.encoding=UTF-8 -Duser.timezone=Asia/Tokyo
     volumes:
-      # NAS上の画像フォルダをマウント（パスは環境に合わせて変更）
-      - ${IMAGE_VOLUME_PATH:-//192.168.0.5/homedir/PhotoDiary}:/var/photodiary/images
+      # CIFS named volume で NAS を直接マウント（WSL2 環境でも動作）
+      - nas_photos:/var/photodiary/images
     restart: unless-stopped
     networks:
       - photodiary-network
@@ -55,3 +55,11 @@ services:
 networks:
   photodiary-network:
     name: photodiary-war-network
+
+volumes:
+  nas_photos:
+    driver: local
+    driver_opts:
+      type: cifs
+      device: ${IMAGE_VOLUME_PATH:-//192.168.0.5/homedir/PhotoDiary}
+      o: "addr=${NAS_ADDR:-192.168.0.5},username=${NAS_USER},password=${NAS_PASSWORD},file_mode=0777,dir_mode=0777,noperm,vers=2.1"

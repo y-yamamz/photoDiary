@@ -1,0 +1,25 @@
+# =============================================================
+# Frontend Dockerfile (WAR版) [Linux向け]
+# 事前にビルドした frontend.war (ZIP) を Nginx に展開して配信する
+# build-war.sh で frontend.war を生成してから使用すること
+#
+# Linux の jar コマンドで作成した WAR はパス区切りが
+# フォワードスラッシュのみのため、変換処理は不要
+# =============================================================
+
+FROM nginx:1.27-alpine
+
+# デフォルトのコンテンツを削除
+RUN rm -rf /usr/share/nginx/html/*
+
+# frontend.war (ZIP形式) を解凍して Nginx の公開ディレクトリに展開
+COPY frontend.war /tmp/frontend.war
+RUN unzip /tmp/frontend.war -d /usr/share/nginx/html && \
+    rm /tmp/frontend.war
+
+# Nginx 設定ファイルを配置
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]

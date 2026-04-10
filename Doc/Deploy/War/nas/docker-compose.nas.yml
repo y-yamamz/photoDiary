@@ -1,0 +1,69 @@
+# =============================================================
+# PhotoDiary - Docker Compose (WAR デプロイ版) [NAS版]
+#
+# 前提: build-war.bat を実行して以下が存在すること
+#   Doc/Deploy/War/nas/backend.war
+#   Doc/Deploy/War/nas/frontend.war
+#
+# 起動コマンド (Doc/Deploy/War/nas/ フォルダで実行):
+#   docker compose -f docker-compose.nas.yml up -d --build
+#
+# 停止コマンド:
+#   docker compose -f docker-compose.nas.yml down
+#
+# 画像保存先: NAS (CIFS/SMB マウント)
+#   Docker が直接 NAS に SMB 接続する。
+#   WSL2 環境でも UNC パス直接マウント不可のため CIFS named volume を使用。
+# =============================================================
+
+services:
+
+  # =====================
+  # フロントエンド (Nginx + React)
+  # =====================
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: photodiary-frontend
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - photodiary-network
+
+  # =====================
+  # バックエンド (Tomcat + Spring Boot)
+  # =====================
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: photodiary-backend
+    environment:
+      - SPRING_DATASOURCE_URL=${MYSQL_URL:-jdbc:mysql://192.168.0.3:3306/photodb?useSSL=false&serverTimezone=Asia/Tokyo}
+      - SPRING_DATASOURCE_USERNAME=${MYSQL_USER:-yama}
+      - SPRING_DATASOURCE_PASSWORD=${MYSQL_PASSWORD:-yama}
+      - STORAGE_BASE_PATH=/var/photodiary/images
+      - TZ=Asia/Tokyo
+      - JAVA_OPTS=-Dfile.encoding=UTF-8 -Duser.timezone=Asia/Tokyo
+    volumes:
+      # CIFS named volume で NAS を直接マウント（WSL2 環境でも動作）
+      - nas_photos:/var/photodiary/images
+    restart: unless-stopped
+    networks:
+      - photodiary-network
+
+networks:
+  photodiary-network:
+    name: photodiary-war-network
+
+volumes:
+  nas_photos:
+    driver: local
+    driver_opts:
+      type: cifs
+      device: ${IMAGE_VOLUME_PATH:-//192.168.0.5/homedir/PhotoDiary}
+      o: "addr=${NAS_ADDR:-192.168.0.5},username=${NAS_USER},password=${NAS_PASSWORD},file_mode=0777,dir_mode=0777,noperm,vers=2.1"

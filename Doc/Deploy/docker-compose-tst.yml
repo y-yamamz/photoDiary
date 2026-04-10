@@ -1,16 +1,14 @@
 version: "3.9"
 # テスト・検証用のコンテナ
 services:
-  debug-container:
-    image: ubuntu:22.04
-    container_name: debug-container
-    tty: true
-    stdin_open: true
-    privileged: true
-    command: /bin/bashexit
+  tomcat:
+    image: tomcat:10.1-jdk17-temurin
+    container_name: tomcat-test
+    ports:
+      - "8080:8080"
     volumes:
-      - /mnt/nas:/mnt/nas    
-
+      - /mnt/homedir:/mnt/homedir
+    restart: unless-stopped
 #docker compose -f Doc/Deploy/docker-compose-tst.yml up -d
 #docker exec -it --privileged debug-container bash
 #apt update
@@ -19,3 +17,9 @@ services:
 #smbclient -L //192.168.0.5 -U test
 #mkdir /mnt/nas
 #mount -t cifs //192.168.0.5/HOMEDIR /mnt/nas -o username=test,password=test,vers=2.1,sec=ntlm
+
+#docker rm -v debug-container
+#docker rmi イメージ名
+#docker volume rm ボリューム\名
+
+#img=$(docker inspect --format='{{.Image}}' debug-container) && docker rm -f -v  && docker rmi $img

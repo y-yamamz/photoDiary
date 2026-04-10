@@ -1,0 +1,71 @@
+# =============================================================
+# PhotoDiary - Docker Compose (WAR デプロイ版) [Ubuntu + NAS マウント版]
+#
+# 前提:
+#   1. build-war.sh を実行して以下が存在すること
+#        ubunts/backend.war
+#        ubunts/frontend.war
+#   2. Ubuntu ホスト側で NAS が /mnt/homedir にマウント済みであること
+#        例: sudo mount -t cifs //192.168.0.5/homedir /mnt/homedir \
+#              -o username=xxx,password=yyy,vers=2.1
+#        または /etc/fstab に登録済みであること
+#
+# 起動コマンド (Doc/Deploy/War/ubunts/ ディレクトリで実行):
+#   docker compose -f docker-compose.ubunts.yml up -d --build
+#
+# 停止コマンド:
+#   docker compose -f docker-compose.ubunts.yml down
+#
+# 画像保存先: Ubuntu ホストの NAS マウントポイントをバインドマウント
+#   ホスト側: /mnt/homedir/PhotoDiary  →  コンテナ内: /var/photodiary/images
+#   ※ CIFS named volume 不要（ホスト OS がマウント済みのパスを直接使用）
+#
+# 環境変数:
+#   .env.example をコピーして .env を作成してください
+#     cp .env.example .env
+# =============================================================
+
+services:
+
+  # =====================
+  # フロントエンド (Nginx + React)
+  # =====================
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: photodiary-frontend
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - photodiary-network
+
+  # =====================
+  # バックエンド (Tomcat + Spring Boot)
+  # =====================
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: photodiary-backend
+    environment:
+      - SPRING_DATASOURCE_URL=${MYSQL_URL:-jdbc:mysql://192.168.0.3:3306/photodb?useSSL=false&serverTimezone=Asia/Tokyo}
+      - SPRING_DATASOURCE_USERNAME=${MYSQL_USER:-yama}
+      - SPRING_DATASOURCE_PASSWORD=${MYSQL_PASSWORD:-yama}
+      - STORAGE_BASE_PATH=/var/photodiary/images
+      - TZ=Asia/Tokyo
+      - JAVA_OPTS=-Dfile.encoding=UTF-8 -Duser.timezone=Asia/Tokyo
+    volumes:
+      # Ubuntu ホスト側の NAS マウントポイントをバインドマウント
+      # ホストの /mnt/homedir が NAS マウント済みであることが前提
+      - "${IMAGE_LOCAL_PATH:-/mnt/homedir/PhotoDiary}:/var/photodiary/images"
+    restart: unless-stopped
+    networks:
+      - photodiary-network
+
+networks:
+  photodiary-network:
+    name: photodiary-war-network
