@@ -31,6 +31,8 @@ export const HeicSafeImage = ({ src, alt, sx, className }: Props) => {
       alt={alt}
       sx={sx}
       className={className}
+      loading="lazy"
+      decoding="async"
     />
   );
 };
