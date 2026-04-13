@@ -57,7 +57,7 @@ if [ ! -f ".env" ]; then
     echo "[ERROR] .env not found."
     echo "        Create .env in the same directory with the following contents:"
     echo ""
-    echo "          MYSQL_URL=jdbc:mysql://192.168.0.3:3306/photodb?useSSL=false&serverTimezone=Asia/Tokyo"
+    echo "          MYSQL_URL=jdbc:mysql://192.168.0.10:3306/photodb?useSSL=false&serverTimezone=Asia/Tokyo"
     echo "          MYSQL_USER=yama"
     echo "          MYSQL_PASSWORD=yama"
     echo "          FRONTEND_PORT=80"

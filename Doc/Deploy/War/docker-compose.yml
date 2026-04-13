@@ -39,7 +39,7 @@ services:
       dockerfile: Dockerfile.backend
     container_name: photodiary-backend
     environment:
-      - SPRING_DATASOURCE_URL=${MYSQL_URL:-jdbc:mysql://192.168.0.3:3306/photodb?useSSL=false&serverTimezone=Asia/Tokyo}
+      - SPRING_DATASOURCE_URL=${MYSQL_URL:-jdbc:mysql://192.168.0.10:3306/photodb?useSSL=false&serverTimezone=Asia/Tokyo}
       - SPRING_DATASOURCE_USERNAME=${MYSQL_USER:-yama}
       - SPRING_DATASOURCE_PASSWORD=${MYSQL_PASSWORD:-yama}
       - STORAGE_BASE_PATH=/var/photodiary/images

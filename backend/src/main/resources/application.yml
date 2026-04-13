@@ -1,7 +1,7 @@
 spring:
   datasource:
-    url: jdbc:mysql://192.168.0.3:3306/photodb?useSSL=false&serverTimezone=Asia/Tokyo
-    #url: jdbc:mysql://mysql84:3306/photodb?useSSL=false&serverTimezone=Asia/Tokyo
+    #url: jdbc:mysql://192.168.0.10:3306/photodb?useSSL=false&serverTimezone=Asia/Tokyo
+    url: jdbc:mysql://mysql84:3306/photodb?useSSL=false&serverTimezone=Asia/Tokyo
     username: yama
     password: yama
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -12,7 +12,7 @@ spring:
 
 mybatis:
   mapper-locations: classpath:/sql/**/*.xml
-  type-aliases-package: com.example.backend.db.entity
+  type-aliases-package: com.photo.backend.db.entity
   configuration:
     map-underscore-to-camel-case: true
 

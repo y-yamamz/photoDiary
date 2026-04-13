@@ -17,7 +17,7 @@ WAR ファイルは **Windows 11 上でビルド**し、Ubuntu へ転送して D
 |---|---|---|
 | frontend | Nginx + React/Vite (WAR展開) | UI 配信・リバースプロキシ (ポート 80) |
 | backend | Tomcat + Spring Boot WAR | API・画像配信 (内部ポート 8080) |
-| MySQL | 既存サーバー (192.168.0.3) | データ永続化 |
+| MySQL | 既存サーバー (192.168.0.10) | データ永続化 |
 | NAS | /mnt/homedir/PhotoDiary | 写真ファイル保存 |
 
 ```
@@ -74,7 +74,7 @@ node -v
 - Ubuntu（20.04 以上推奨）
 - Docker Engine が起動済み（`docker --version` で確認）
 - Docker Compose Plugin がインストール済み（`docker compose version` で確認）
-- MySQL が `192.168.0.3:3306/photodb` で稼働中
+- MySQL が `192.168.0.10:3306/photodb` で稼働中
 - NAS が `/mnt/homedir` にマウント済みであること
 
 ```bash
@@ -175,7 +175,7 @@ scp Doc\Deploy\War\ubunts\frontend.war ユーザー名@Ubuntu-IP:/var/work/ubunt
 
 ```bash
 cat > /var/work/ubunts/.env << 'EOF'
-MYSQL_URL=jdbc:mysql://192.168.0.3:3306/photodb?useSSL=false&serverTimezone=Asia/Tokyo
+MYSQL_URL=jdbc:mysql://192.168.0.10:3306/photodb?useSSL=false&serverTimezone=Asia/Tokyo
 MYSQL_USER=yama
 MYSQL_PASSWORD=yama
 FRONTEND_PORT=80

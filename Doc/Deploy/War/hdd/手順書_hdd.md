@@ -12,7 +12,7 @@
 |---|---|---|
 | frontend | Nginx + React/Vite (WAR展開) | UI 配信・リバースプロキシ (ポート 80) |
 | backend | Tomcat + Spring Boot WAR | API・画像配信 (内部ポート 8080) |
-| MySQL | 既存サーバー (192.168.0.3) | データ永続化 |
+| MySQL | 既存サーバー (192.168.0.10) | データ永続化 |
 | 外部HDD | Y:\PhotoDiary | 写真ファイル保存 |
 
 ```
@@ -52,7 +52,7 @@ Doc/Deploy/War/hdd/
 - Docker Desktop for Windows（WSL2 バックエンド）が起動済み
 - Java 17 が PATH に通っていること（`java -version` で確認）
 - Node.js (v20 以上) が PATH に通っていること（`node -v` で確認）
-- MySQL が `192.168.0.3:3306/photodb` で稼働中
+- MySQL が `192.168.0.10:3306/photodb` で稼働中
 - 外部HDD が接続済みで、画像保存用フォルダ `Y:\PhotoDiary` が作成済みであること
 
 ```cmd
@@ -109,7 +109,7 @@ copy .env.example .env
 `.env` を開いて接続情報を確認・編集します：
 
 ```env
-MYSQL_URL=jdbc:mysql://192.168.0.3:3306/photodb?useSSL=false&serverTimezone=Asia/Tokyo
+MYSQL_URL=jdbc:mysql://192.168.0.10:3306/photodb?useSSL=false&serverTimezone=Asia/Tokyo
 MYSQL_USER=yama
 MYSQL_PASSWORD=yama
 FRONTEND_PORT=80
@@ -153,7 +153,7 @@ MySQL が稼働中で `photodb` のテーブルが作成済みであることを
 未作成の場合は `Doc/DB/` 配下の SQL ファイルを実行してください。
 
 ```cmd
-mysql -h 192.168.0.3 -u yama -p photodb
+mysql -h 192.168.0.10 -u yama -p photodb
 ```
 
 ### Step 5: Docker Desktop でデプロイ（初回）
