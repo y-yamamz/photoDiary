@@ -47,6 +47,9 @@ dependencies {
     // WAR化する場合は providedRuntime
     providedRuntime 'org.springframework.boot:spring-boot-starter-tomcat'
 
+	// SQL実行ログ（パラメータ込みの実SQL出力）
+	implementation 'p6spy:p6spy:3.9.1'
+
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 

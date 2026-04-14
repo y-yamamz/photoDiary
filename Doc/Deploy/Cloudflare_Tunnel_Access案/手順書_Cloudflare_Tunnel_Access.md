@@ -288,3 +288,6 @@ cloudflared tunnel info photodiary
 - Ubuntu のインターネット接続が切れると外からアクセス不可になる
 - 写真データは NAS に残るため、クラウドへの移行は不要
 - Cloudflare Zero Trust Free プランは **50 ユーザーまで無料**
+
+#一時的なお試しランダムURL
+cloudflared tunnel --url http://192.168.0.10:80

@@ -1,10 +1,8 @@
 package com.photo.backend.dto.response;
 
-import lombok.Builder;
-import lombok.Getter;
+import lombok.Data;
 
-@Getter
-@Builder
+@Data
 public class TagResponse {
     private Long tagId;
     private String tagName;

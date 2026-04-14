@@ -14,6 +14,8 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import FolderSpecialIcon from '@mui/icons-material/FolderSpecial';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import ImageIcon from '@mui/icons-material/Image';
+import NotesIcon from '@mui/icons-material/Notes';
 import type { Photo, Group } from '../types';
 import { lightboxOverlaySx } from '../styles/albumSx';
 import { formatDate } from '../../../shared/utils';
@@ -383,9 +385,12 @@ export const PhotoLightbox = ({ photos, currentIndex, groups, onClose, onUpdate,
               ) : (
                 /* ── 詳細表示 ── */
                 <>
-                  <Typography variant="h6" fontWeight={700} color="text.primary" sx={{ lineHeight: 1.4 }}>
-                    {photo.description ?? '無題'}
-                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                    <NotesIcon sx={{ fontSize: 18, color: '#fbbf24', flexShrink: 0, mt: 0.3 }} />
+                    <Typography variant="h6" fontWeight={700} color={photo.description ? 'text.primary' : 'text.disabled'} sx={{ lineHeight: 1.4 }}>
+                      {photo.description ?? '未設定'}
+                    </Typography>
+                  </Box>
 
                   <Divider sx={{ opacity: 0.3 }} />
 
@@ -396,22 +401,18 @@ export const PhotoLightbox = ({ photos, currentIndex, groups, onClose, onUpdate,
                         {formatDate(photo.takenAt ?? photo.createdAt, 'YYYY年MM月DD日 HH:mm')}
                       </Typography>
                     </Box>
-                    {photo.location && (
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <LocationOnIcon sx={{ fontSize: 16, color: '#f472b6', flexShrink: 0 }} />
-                        <Typography variant="body2" color="text.secondary">
-                          {photo.location}
-                        </Typography>
-                      </Box>
-                    )}
-                    {group && (
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <FolderSpecialIcon sx={{ fontSize: 16, color: '#34d399', flexShrink: 0 }} />
-                        <Typography variant="body2" color="text.secondary">
-                          {group.groupName}
-                        </Typography>
-                      </Box>
-                    )}
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <LocationOnIcon sx={{ fontSize: 16, color: '#f472b6', flexShrink: 0 }} />
+                      <Typography variant="body2" color={photo.location ? 'text.secondary' : 'text.disabled'}>
+                        {photo.location ?? '未設定'}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <FolderSpecialIcon sx={{ fontSize: 16, color: '#34d399', flexShrink: 0 }} />
+                      <Typography variant="body2" color={group ? 'text.secondary' : 'text.disabled'}>
+                        {group ? group.groupName : '未設定'}
+                      </Typography>
+                    </Box>
                   </Box>
 
                   {photo.tags && photo.tags.length > 0 && (
@@ -445,9 +446,12 @@ export const PhotoLightbox = ({ photos, currentIndex, groups, onClose, onUpdate,
                   {photo.fileName && (
                     <>
                       <Divider sx={{ opacity: 0.3 }} />
-                      <Typography variant="caption" color="text.disabled">
-                        {photo.fileName}
-                      </Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <ImageIcon sx={{ fontSize: 16, color: '#60a5fa', flexShrink: 0 }} />
+                        <Typography variant="caption" color="text.disabled">
+                          {photo.fileName}
+                        </Typography>
+                      </Box>
                     </>
                   )}
 
