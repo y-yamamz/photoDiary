@@ -54,7 +54,7 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - SPRING_DATASOURCE_URL=${MYSQL_URL:-jdbc:mysql://mysql84:3306/photodb?useSSL=false&serverTimezone=Asia/Tokyo}
+      - SPRING_DATASOURCE_URL=${MYSQL_URL:-jdbc:mysql://mysql84:3306/photodb?useSSL=false&serverTimezone=Asia/Tokyo&allowPublicKeyRetrieval=true}
       - SPRING_DATASOURCE_USERNAME=${MYSQL_USER:-yama}
       - SPRING_DATASOURCE_PASSWORD=${MYSQL_PASSWORD:-yama}
       - STORAGE_BASE_PATH=/var/photodiary/images
@@ -67,10 +67,10 @@ services:
     restart: unless-stopped
     networks:
       - photodiary-network
-      - backend-net  # mysqlコンテナと同じネットワークに参加してコンテナ名で接続できるようにする
+      - backend-net  # mysql84コンテナと同じネットワークに参加してコンテナ名で接続できるようにする
 
 networks:
   photodiary-network:
     name: photodiary-war-network
   backend-net:
-    external: true  # mysqlコンテナが属する既存のネットワークを参照
+    external: true  # doc/db/docker-compose.db.yml で起動した mysql84 コンテナのネットワーク

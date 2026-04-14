@@ -187,6 +187,7 @@ EOF
 
 ```bash
 cd /var/work/ubunts
+dos2unix build-war.sh　#初回だけ
 bash build-war.sh
 ```
 

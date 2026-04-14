@@ -1,7 +1,7 @@
 spring:
   datasource:
     #url: jdbc:mysql://192.168.0.10:3306/photodb?useSSL=false&serverTimezone=Asia/Tokyo
-    url: jdbc:mysql://mysql84:3306/photodb?useSSL=false&serverTimezone=Asia/Tokyo
+    url: jdbc:mysql://mysql84:3306/photodb?useSSL=false&serverTimezone=Asia/Tokyo&allowPublicKeyRetrieval=true
     username: yama
     password: yama
     driver-class-name: com.mysql.cj.jdbc.Driver
