@@ -6,6 +6,12 @@ export interface RegisterRequest {
   password: string;
 }
 
+export interface ChangePasswordRequest {
+  username: string;
+  currentPassword: string;
+  newPassword: string;
+}
+
 export const authApi = {
   login: (body: LoginRequest) =>
     apiClient
@@ -16,4 +22,9 @@ export const authApi = {
     apiClient
       .post<ApiResponse<LoginResponse>>('/api/users/register', body)
       .then((r) => r.data.data),
+
+  changePassword: (body: ChangePasswordRequest) =>
+    apiClient
+      .put<ApiResponse<null>>('/api/users/password', body)
+      .then((r) => r.data),
 };

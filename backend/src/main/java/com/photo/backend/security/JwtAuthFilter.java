@@ -28,9 +28,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
-        // ログイン・ユーザー登録・ファイル配信は認証不要
+        // ログイン・ユーザー登録・パスワード変更・ファイル配信は認証不要
         return path.equals("/api/login")
                 || path.equals("/api/users/register")
+                || path.equals("/api/users/password")
                 || path.startsWith("/images/");
     }
 

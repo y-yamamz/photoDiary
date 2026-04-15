@@ -5,6 +5,7 @@ import com.photo.backend.common.exception.AppException;
 import com.photo.backend.db.entity.Users;
 import com.photo.backend.db.entity.UsersExample;
 import com.photo.backend.db.mapper.UsersMapper;
+import com.photo.backend.dto.request.ChangePasswordRequest;
 import com.photo.backend.dto.request.LoginRequest;
 import com.photo.backend.dto.request.RegisterRequest;
 import com.photo.backend.dto.response.LoginResponse;
@@ -84,6 +85,43 @@ public class AuthService {
                 .token(token)
                 .user(userResponse)
                 .build();
+    }
+
+    public void changePassword(ChangePasswordRequest request) {
+        if (request.getUsername() == null || request.getUsername().trim().isEmpty()) {
+            throw new AppException(HttpStatus.BAD_REQUEST, "ユーザー名を入力してください");
+        }
+        if (request.getCurrentPassword() == null || request.getCurrentPassword().isEmpty()) {
+            throw new AppException(HttpStatus.BAD_REQUEST, "現在のパスワードを入力してください");
+        }
+        if (request.getNewPassword() == null || request.getNewPassword().length() < 6) {
+            throw new AppException(HttpStatus.BAD_REQUEST, "新しいパスワードは6文字以上で入力してください");
+        }
+
+        UsersExample example = new UsersExample();
+        example.createCriteria().andUsernameEqualTo(request.getUsername().trim());
+        List<Users> users = usersMapper.selectByExample(example);
+
+        if (users.isEmpty()) {
+            throw new AppException(HttpStatus.UNAUTHORIZED, "ユーザー名またはパスワードが正しくありません");
+        }
+
+        Users user = users.get(0);
+
+        BCrypt.Result result = BCrypt.verifyer().verify(
+                request.getCurrentPassword().toCharArray(),
+                user.getPassword());
+
+        if (!result.verified) {
+            throw new AppException(HttpStatus.UNAUTHORIZED, "ユーザー名またはパスワードが正しくありません");
+        }
+
+        String hashed = BCrypt.withDefaults().hashToString(12, request.getNewPassword().toCharArray());
+        Users updateRow = new Users();
+        updateRow.setPassword(hashed);
+        UsersExample updateExample = new UsersExample();
+        updateExample.createCriteria().andUsernameEqualTo(user.getUsername());
+        usersMapper.updateByExampleSelective(updateRow, updateExample);
     }
 
     public LoginResponse login(LoginRequest request) {

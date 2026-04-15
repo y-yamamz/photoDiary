@@ -10,46 +10,66 @@ import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import KeyIcon from '@mui/icons-material/Key';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import { useAuth } from '../hooks/useAuth';
 import { loginContainerSx, loginCardSx, submitButtonSx, orbitSx } from '../styles/loginSx';
 import { GradientText } from '../../../shared/components/GradientText';
 import { alpha } from '@mui/material/styles';
 
 export const LoginPage = () => {
-  const { login, register, loading, error } = useAuth();
+  const { login, register, changePassword, loading, error } = useAuth();
 
-  // ログイン / 新規登録 の切り替え
-  const [mode, setMode] = useState<'login' | 'register'>('login');
+  // ログイン / 新規登録 / パスワード変更 の切り替え
+  const [mode, setMode] = useState<'login' | 'register' | 'changePassword'>('login');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmNew, setShowConfirmNew] = useState(false);
+  const [changeSuccess, setChangeSuccess] = useState(false);
 
-  // 確認パスワードの不一致はクライアント側でチェック（それ以外はバックエンド任せ）
+  // 確認パスワードの不一致チェック
   const confirmError = mode === 'register' && confirmPassword && password !== confirmPassword
     ? 'パスワードが一致しません'
     : null;
+  const confirmNewError = mode === 'changePassword' && confirmNewPassword && newPassword !== confirmNewPassword
+    ? 'パスワードが一致しません'
+    : null;
 
-  const switchMode = (next: 'login' | 'register') => {
+  const switchMode = (next: 'login' | 'register' | 'changePassword') => {
     setMode(next);
     setUsername('');
     setPassword('');
     setConfirmPassword('');
+    setNewPassword('');
+    setConfirmNewPassword('');
+    setChangeSuccess(false);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (mode === 'login') {
       login({ username, password });
-    } else {
+    } else if (mode === 'register') {
       if (confirmError) return;
       register({ username, password });
+    } else {
+      if (confirmNewError) return;
+      const ok = await changePassword({ username, currentPassword: password, newPassword });
+      if (ok) setChangeSuccess(true);
     }
   };
 
-  const canSubmit = !loading && !!username && !!password
-    && (mode === 'login' || (!!confirmPassword && !confirmError));
+  const canSubmit = !loading && !!username && !!password && (
+    mode === 'login' ||
+    (mode === 'register' && !!confirmPassword && !confirmError) ||
+    (mode === 'changePassword' && !!newPassword && !!confirmNewPassword && !confirmNewError)
+  );
 
   return (
     <Box sx={loginContainerSx}>
@@ -116,7 +136,7 @@ export const LoginPage = () => {
             p: 0.5,
           }}
         >
-          {(['login', 'register'] as const).map((m) => (
+          {(['login', 'register', 'changePassword'] as const).map((m) => (
             <Button
               key={m}
               fullWidth
@@ -125,7 +145,8 @@ export const LoginPage = () => {
                 py: 1,
                 borderRadius: 1.5,
                 fontWeight: 600,
-                fontSize: '0.875rem',
+                fontSize: '0.8rem',
+                minWidth: 0,
                 color: mode === m ? '#fff' : 'text.secondary',
                 background: mode === m
                   ? 'linear-gradient(135deg, #7c3aed, #a78bfa)'
@@ -139,7 +160,7 @@ export const LoginPage = () => {
                 },
               }}
             >
-              {m === 'login' ? 'ログイン' : '新規登録'}
+              {m === 'login' ? 'ログイン' : m === 'register' ? '新規登録' : 'ﾊﾟｽﾜｰﾄﾞ変更'}
             </Button>
           ))}
         </Box>
@@ -148,6 +169,18 @@ export const LoginPage = () => {
         {error && (
           <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>
             {error}
+          </Alert>
+        )}
+
+        {/* パスワード変更成功メッセージ */}
+        {changeSuccess && (
+          <Alert
+            severity="success"
+            icon={<CheckCircleOutlineIcon />}
+            sx={{ mb: 2, borderRadius: 2 }}
+            onClose={() => setChangeSuccess(false)}
+          >
+            パスワードを変更しました。新しいパスワードでログインしてください。
           </Alert>
         )}
 
@@ -169,9 +202,9 @@ export const LoginPage = () => {
             }}
           />
 
-          {/* パスワード */}
+          {/* パスワード（ログイン・新規登録）または 現在のパスワード（PW変更） */}
           <TextField
-            label="パスワード"
+            label={mode === 'changePassword' ? '現在のパスワード' : 'パスワード'}
             type={showPassword ? 'text' : 'password'}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -230,6 +263,67 @@ export const LoginPage = () => {
             />
           )}
 
+          {/* パスワード変更時：新しいパスワード＋確認 */}
+          {mode === 'changePassword' && (
+            <>
+              <TextField
+                label="新しいパスワード"
+                type={showNewPassword ? 'text' : 'password'}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                fullWidth
+                helperText="6文字以上"
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <KeyIcon sx={{ color: 'text.secondary', fontSize: 20 }} />
+                    </InputAdornment>
+                  ),
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        onClick={() => setShowNewPassword((s) => !s)}
+                        edge="end"
+                        size="small"
+                        sx={{ color: 'text.secondary' }}
+                      >
+                        {showNewPassword ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+              />
+              <TextField
+                label="新しいパスワード（確認）"
+                type={showConfirmNew ? 'text' : 'password'}
+                value={confirmNewPassword}
+                onChange={(e) => setConfirmNewPassword(e.target.value)}
+                fullWidth
+                error={!!confirmNewError}
+                helperText={confirmNewError ?? undefined}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <KeyIcon sx={{ color: 'text.secondary', fontSize: 20 }} />
+                    </InputAdornment>
+                  ),
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        onClick={() => setShowConfirmNew((s) => !s)}
+                        edge="end"
+                        size="small"
+                        sx={{ color: 'text.secondary' }}
+                      >
+                        {showConfirmNew ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </>
+          )}
+
           {/* 送信ボタン */}
           <Button
             type="submit"
@@ -242,8 +336,10 @@ export const LoginPage = () => {
               <CircularProgress size={22} color="inherit" />
             ) : mode === 'login' ? (
               <><AutoAwesomeIcon sx={{ mr: 1, fontSize: 18 }} />ログイン</>
-            ) : (
+            ) : mode === 'register' ? (
               <><PersonAddIcon sx={{ mr: 1, fontSize: 18 }} />アカウントを作成</>
+            ) : (
+              <><KeyIcon sx={{ mr: 1, fontSize: 18 }} />パスワードを変更</>
             )}
           </Button>
         </Box>

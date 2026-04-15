@@ -41,9 +41,12 @@ apiClient.interceptors.response.use(
       },
     );
 
-    // ログイン・登録エンドポイント自体の 401 はリダイレクトしない
+    // ログイン・登録・パスワード変更エンドポイント自体の 401 はリダイレクトしない
     // （認証失敗メッセージを画面に表示させるため）
-    const isAuthEndpoint = url.includes('/api/login') || url.includes('/api/users/register');
+    const isAuthEndpoint =
+      url.includes('/api/login') ||
+      url.includes('/api/users/register') ||
+      url.includes('/api/users/password');
     if (status === 401 && !isAuthEndpoint) {
       sessionStorage.removeItem(TOKEN_KEY);
       sessionStorage.removeItem(USER_KEY);

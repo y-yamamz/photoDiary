@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { AuthState, LoginFormValues } from '../types';
 import { authApi } from '../api/authApi';
-import type { RegisterRequest } from '../api/authApi';
+import type { RegisterRequest, ChangePasswordRequest } from '../api/authApi';
 import { extractApiError } from '../../../shared/api/apiClient';
 
 const TOKEN_KEY = 'photo_diary_token';
@@ -52,6 +52,20 @@ export const useAuth = () => {
     }
   }, [navigate]);
 
+  const changePassword = useCallback(async (values: ChangePasswordRequest) => {
+    setLoading(true);
+    setError(null);
+    try {
+      await authApi.changePassword(values);
+      return true;
+    } catch (err) {
+      setError(extractApiError(err));
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   const logout = useCallback(() => {
     sessionStorage.removeItem(TOKEN_KEY);
     sessionStorage.removeItem(USER_KEY);
@@ -59,5 +73,5 @@ export const useAuth = () => {
     navigate('/login');
   }, [navigate]);
 
-  return { auth, loading, error, login, register, logout };
+  return { auth, loading, error, login, register, changePassword, logout };
 };
