@@ -58,6 +58,7 @@ services:
       - SPRING_DATASOURCE_USERNAME=${MYSQL_USER:-yama}
       - SPRING_DATASOURCE_PASSWORD=${MYSQL_PASSWORD:-yama}
       - SPRING_DATASOURCE_DRIVER_CLASS_NAME=com.mysql.cj.jdbc.Driver
+      - ADMIN_SECRET=${ADMIN_SECRET:-photo-admin-secret-change-me}
       - STORAGE_BASE_PATH=/var/photodiary/images
       - TZ=Asia/Tokyo
       - JAVA_OPTS=-Dfile.encoding=UTF-8 -Duser.timezone=Asia/Tokyo

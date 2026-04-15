@@ -5,12 +5,14 @@ import com.photo.backend.common.exception.AppException;
 import com.photo.backend.db.entity.Users;
 import com.photo.backend.db.entity.UsersExample;
 import com.photo.backend.db.mapper.UsersMapper;
+import com.photo.backend.dto.request.AdminResetPasswordRequest;
 import com.photo.backend.dto.request.ChangePasswordRequest;
 import com.photo.backend.dto.request.LoginRequest;
 import com.photo.backend.dto.request.RegisterRequest;
 import com.photo.backend.dto.response.LoginResponse;
 import com.photo.backend.dto.response.UserResponse;
 import com.photo.backend.security.JwtProvider;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
@@ -27,6 +29,9 @@ public class AuthService {
 
     private final UsersMapper usersMapper;
     private final JwtProvider jwtProvider;
+
+    @Value("${admin.secret}")
+    private String adminSecret;
 
     public AuthService(UsersMapper usersMapper, JwtProvider jwtProvider) {
         this.usersMapper = usersMapper;
@@ -121,6 +126,33 @@ public class AuthService {
         updateRow.setPassword(hashed);
         UsersExample updateExample = new UsersExample();
         updateExample.createCriteria().andUsernameEqualTo(user.getUsername());
+        usersMapper.updateByExampleSelective(updateRow, updateExample);
+    }
+
+    public void adminResetPassword(AdminResetPasswordRequest request) {
+        if (!adminSecret.equals(request.getAdminSecret())) {
+            throw new AppException(HttpStatus.FORBIDDEN, "管理者シークレットキーが正しくありません");
+        }
+        if (request.getUsername() == null || request.getUsername().trim().isEmpty()) {
+            throw new AppException(HttpStatus.BAD_REQUEST, "ユーザー名を入力してください");
+        }
+        if (request.getNewPassword() == null || request.getNewPassword().length() < 6) {
+            throw new AppException(HttpStatus.BAD_REQUEST, "新しいパスワードは6文字以上で入力してください");
+        }
+
+        UsersExample example = new UsersExample();
+        example.createCriteria().andUsernameEqualTo(request.getUsername().trim());
+        List<Users> users = usersMapper.selectByExample(example);
+
+        if (users.isEmpty()) {
+            throw new AppException(HttpStatus.NOT_FOUND, "ユーザーが見つかりません");
+        }
+
+        String hashed = BCrypt.withDefaults().hashToString(12, request.getNewPassword().toCharArray());
+        Users updateRow = new Users();
+        updateRow.setPassword(hashed);
+        UsersExample updateExample = new UsersExample();
+        updateExample.createCriteria().andUsernameEqualTo(request.getUsername().trim());
         usersMapper.updateByExampleSelective(updateRow, updateExample);
     }
 

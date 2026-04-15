@@ -1,7 +1,7 @@
 spring:
   datasource:
     # p6spy が JDBC をラップして実SQLをログ出力する（jdbc:p6spy: プレフィックスが必要）
-    #url: jdbc:p6spy:mysql://192.168.0.10:3306/photodb?useSSL=false&serverTimezone=Asia/Tokyo
+    #url: jdbc:p6spy:mysql://192.168.0.10:3306/photodb?useSSL=false&serverTimezone=Asia/Tokyo&allowPublicKeyRetrieval=true
     url: jdbc:p6spy:mysql://mysql84:3306/photodb?useSSL=false&serverTimezone=Asia/Tokyo&allowPublicKeyRetrieval=true
     username: yama
     password: yama
@@ -35,13 +35,17 @@ jwt:
   access-token-expiry: 3600000
   refresh-token-expiry: 604800000
 
+admin:
+  secret: ${ADMIN_SECRET:photo-admin-secret-change-me}
+
 logging:
   level:
     root: INFO
   log:
     # ログファイルの出力先ディレクトリ (絶対パス or 相対パス)
     # 例) /var/log/photodiary  または  logs
-    path: logs
+    #path: logs
+    path: /var/photodiary/images/logs
     # SQLログレベル: OFF=出力しない / DEBUG=実行SQL文を出力
     sql: OFF
 
