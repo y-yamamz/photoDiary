@@ -642,6 +642,39 @@ public class PhotoService {
     }
 
     /**
+     * 指定ユーザーの全写真を物理ファイルごとDBから削除する（管理者によるユーザー削除用）。
+     *
+     * <p>処理の流れ：
+     * <ol>
+     *   <li>DB上の全写真レコードを取得して物理ファイルを削除する</li>
+     *   <li>photos テーブルのレコードを一括削除する</li>
+     * </ol>
+     * 物理ファイルが存在しなくても処理を継続する（ログ出力のみ）。
+     *
+     * @param userId 削除対象のユーザーID
+     * @return 削除した写真件数
+     */
+    public int deleteAllPhotosByUser(Long userId) {
+        PhotosExample example = new PhotosExample();
+        example.createCriteria().andUserIdEqualTo(userId);
+        List<Photos> photos = photosMapper.selectByExample(example);
+
+        log.info("[deleteAllPhotosByUser] userId={} photoCount={}", userId, photos.size());
+
+        // 物理ファイルを先に削除する
+        for (Photos photo : photos) {
+            deletePhysicalFile(photo.getFilePath());
+        }
+
+        // DB レコードを一括削除する
+        if (!photos.isEmpty()) {
+            photosMapper.deleteByExample(example);
+        }
+
+        return photos.size();
+    }
+
+    /**
      * ユーザーの容量上限を確認し、超過する場合は例外をスローする。
      *
      * @param userId       対象ユーザーID

@@ -57,4 +57,22 @@ public interface UsersCustomMapper {
      * @return 有効ユーザー数
      */
     int countActiveUsers();
+
+    /**
+     * 有効フラグを更新する（管理者操作）。
+     *
+     * @param userId     対象ユーザーID
+     * @param activeFlag 設定する値（1=有効, 0=無効）
+     * @return 更新件数
+     */
+    int updateActiveFlag(@Param("userId") Long userId, @Param("activeFlag") int activeFlag);
+
+    /**
+     * ユーザーをDBから物理削除する。
+     * 呼び出し前に写真データを削除しておくこと。
+     *
+     * @param userId 対象ユーザーID
+     * @return 削除件数
+     */
+    int deleteUserById(@Param("userId") Long userId);
 }

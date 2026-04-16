@@ -87,5 +87,7 @@ export const useAuth = () => {
     navigate('/login');
   }, [navigate]);
 
-  return { auth, loading, error, login, register, changePassword, adminResetPassword, logout };
+  const clearError = useCallback(() => setError(null), []);
+
+  return { auth, loading, error, login, register, changePassword, adminResetPassword, logout, clearError };
 };

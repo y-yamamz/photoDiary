@@ -23,7 +23,7 @@ type Mode = 'login' | 'register' | 'changePassword';
 
 export const LoginPage = () => {
   const navigate = useNavigate();
-  const { login, register, changePassword, loading, error } = useAuth();
+  const { login, register, changePassword, loading, error, clearError } = useAuth();
 
   const [mode, setMode] = useState<Mode>('login');
   const [username, setUsername] = useState('');
@@ -47,6 +47,7 @@ export const LoginPage = () => {
     setUsername(''); setPassword(''); setConfirmPassword('');
     setNewPassword(''); setConfirmNewPassword('');
     setChangeSuccess(false);
+    clearError();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

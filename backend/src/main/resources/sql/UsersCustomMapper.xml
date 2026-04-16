@@ -31,13 +31,26 @@
   <!-- 全ユーザー容量情報一覧（管理者用） -->
   <select id="selectAllWithStorage" resultType="com.photo.backend.db.entity.Users">
     SELECT
-      user_id          AS userId,
-      username         AS username,
-      created_at       AS createdAt,
-      storage_limit_mb  AS storageLimitMb,
+      user_id            AS userId,
+      username           AS username,
+      active_flag        AS activeFlag,
+      created_at         AS createdAt,
+      storage_limit_mb   AS storageLimitMb,
       storage_used_bytes AS storageUsedBytes
     FROM users
     ORDER BY username
   </select>
+
+  <!-- 有効フラグの更新（管理者操作） -->
+  <update id="updateActiveFlag">
+    UPDATE users
+    SET active_flag = #{activeFlag,jdbcType=INTEGER}
+    WHERE user_id = #{userId,jdbcType=BIGINT}
+  </update>
+
+  <!-- ユーザーの物理削除 -->
+  <delete id="deleteUserById">
+    DELETE FROM users WHERE user_id = #{userId,jdbcType=BIGINT}
+  </delete>
 
 </mapper>

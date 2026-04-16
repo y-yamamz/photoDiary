@@ -183,6 +183,12 @@ public class AuthService {
 
         Users user = users.get(0);
 
+        // 有効フラグチェック（active_flag が 1 以外はログイン不可）
+        if (user.getActiveFlag() == null || user.getActiveFlag() != 1) {
+            throw new AppException(HttpStatus.FORBIDDEN,
+                    "ユーザー「" + user.getUsername() + "」は有効ではありません");
+        }
+
         // パスワードをbcryptで検証
         BCrypt.Result result = BCrypt.verifyer().verify(
                 request.getPassword().toCharArray(),

@@ -11,30 +11,37 @@ import com.photo.backend.dto.request.RecalculateStorageRequest;
 import com.photo.backend.dto.request.StorageLimitRequest;
 import com.photo.backend.dto.response.RecalculateStorageResponse;
 import com.photo.backend.dto.response.StorageResponse;
+import com.photo.backend.dto.response.UserManageResponse;
 import com.photo.backend.service.AuthService;
 import com.photo.backend.service.PhotoService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.text.SimpleDateFormat;
 import java.util.List;
 import java.util.stream.Collectors;
 
 /**
  * 管理者専用API（認証不要・管理者シークレットキーで保護）。
- * PUT  /api/admin/users/reset-password          ユーザーのパスワード強制リセット
- * PUT  /api/admin/users/{userId}/storage-limit  ユーザーの容量上限変更（userId指定・旧）
- * PUT  /api/admin/users/storage-limit           ユーザーの容量上限変更（username指定）
- * GET  /api/admin/users/storage                 全ユーザーの容量使用状況一覧
- * GET  /api/admin/users/{username}/storage      指定ユーザーの容量使用状況
- * POST /api/admin/storage/recalculate           ユーザーの使用済み容量を再計算して更新
+ * PUT    /api/admin/users/reset-password          ユーザーのパスワード強制リセット
+ * PUT    /api/admin/users/{userId}/storage-limit  ユーザーの容量上限変更（userId指定・旧）
+ * PUT    /api/admin/users/storage-limit           ユーザーの容量上限変更（username指定）
+ * GET    /api/admin/users/storage                 全ユーザーの容量使用状況一覧
+ * GET    /api/admin/users/{username}/storage      指定ユーザーの容量使用状況
+ * POST   /api/admin/storage/recalculate           ユーザーの使用済み容量を再計算して更新
+ * GET    /api/admin/users                         ユーザー管理一覧（有効フラグ・容量含む）
+ * PUT    /api/admin/users/{username}/active        有効フラグ変更
+ * DELETE /api/admin/users/{username}              ユーザーと写真を物理削除
  */
 @RestController
 @RequestMapping("/api/admin")
@@ -135,6 +142,78 @@ public class AdminController {
             throw new AppException(HttpStatus.NOT_FOUND, "ユーザーが見つかりません");
         }
         return ResponseEntity.ok(ApiResponse.success(toStorageResponse(users.get(0))));
+    }
+
+    /** ユーザー管理一覧を返す（有効フラグ・容量・作成日含む）。 */
+    @GetMapping("/users")
+    public ResponseEntity<ApiResponse<List<UserManageResponse>>> listUsers(
+            @RequestParam String adminSecret) {
+        if (!this.adminSecret.equals(adminSecret)) {
+            throw new AppException(HttpStatus.FORBIDDEN, "管理者シークレットキーが正しくありません");
+        }
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        List<UserManageResponse> list = usersCustomMapper.selectAllWithStorage().stream()
+                .map(user -> {
+                    int limitMb = user.getStorageLimitMb() != null ? user.getStorageLimitMb() : 500;
+                    long limitBytes = (long) limitMb * 1024 * 1024;
+                    long usedBytes = user.getStorageUsedBytes() != null ? user.getStorageUsedBytes() : 0;
+                    double usagePercent = limitBytes > 0 ? (double) usedBytes / limitBytes * 100.0 : 0.0;
+                    return UserManageResponse.builder()
+                            .userId(user.getUserId())
+                            .username(user.getUsername())
+                            .activeFlag(user.getActiveFlag() != null ? user.getActiveFlag() : 1)
+                            .usedBytes(usedBytes)
+                            .limitMb(limitMb)
+                            .limitBytes(limitBytes)
+                            .usagePercent(Math.round(usagePercent * 10.0) / 10.0)
+                            .createdAt(user.getCreatedAt() != null ? sdf.format(user.getCreatedAt()) : null)
+                            .build();
+                })
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(ApiResponse.success(list));
+    }
+
+    /** 指定ユーザーの有効フラグを変更する。 */
+    @PutMapping("/users/{username}/active")
+    public ResponseEntity<ApiResponse<Void>> updateActiveFlag(
+            @PathVariable String username,
+            @RequestParam String adminSecret,
+            @RequestParam int activeFlag) {
+        if (!this.adminSecret.equals(adminSecret)) {
+            throw new AppException(HttpStatus.FORBIDDEN, "管理者シークレットキーが正しくありません");
+        }
+        if (activeFlag != 0 && activeFlag != 1) {
+            throw new AppException(HttpStatus.BAD_REQUEST, "activeFlag は 0 または 1 で指定してください");
+        }
+        UsersExample example = new UsersExample();
+        example.createCriteria().andUsernameEqualTo(username.trim());
+        List<Users> users = usersMapper.selectByExample(example);
+        if (users.isEmpty()) {
+            throw new AppException(HttpStatus.NOT_FOUND, "ユーザーが見つかりません");
+        }
+        usersCustomMapper.updateActiveFlag(users.get(0).getUserId(), activeFlag);
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
+    /** 指定ユーザーと全写真を物理削除する。 */
+    @DeleteMapping("/users/{username}")
+    public ResponseEntity<ApiResponse<Void>> deleteUser(
+            @PathVariable String username,
+            @RequestParam String adminSecret) {
+        if (!this.adminSecret.equals(adminSecret)) {
+            throw new AppException(HttpStatus.FORBIDDEN, "管理者シークレットキーが正しくありません");
+        }
+        UsersExample example = new UsersExample();
+        example.createCriteria().andUsernameEqualTo(username.trim());
+        List<Users> users = usersMapper.selectByExample(example);
+        if (users.isEmpty()) {
+            throw new AppException(HttpStatus.NOT_FOUND, "ユーザーが見つかりません");
+        }
+        Long userId = users.get(0).getUserId();
+        // 写真（物理ファイル + DB）を先に削除してからユーザーを削除する
+        photoService.deleteAllPhotosByUser(userId);
+        usersCustomMapper.deleteUserById(userId);
+        return ResponseEntity.ok(ApiResponse.success(null));
     }
 
     private StorageResponse toStorageResponse(Users user) {

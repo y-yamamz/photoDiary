@@ -28,6 +28,17 @@ export interface UserStorageInfo {
   usagePercent: number;
 }
 
+export interface UserManageInfo {
+  userId: number;
+  username: string;
+  activeFlag: number;
+  usedBytes: number;
+  limitMb: number;
+  limitBytes: number;
+  usagePercent: number;
+  createdAt: string | null;
+}
+
 export const adminApi = {
   /** ユーザーの使用済みストレージを物理ファイルから再計算して更新する */
   recalculateStorage: (body: RecalculateStorageRequest) =>
@@ -48,4 +59,29 @@ export const adminApi = {
         params: { adminSecret },
       })
       .then((r) => r.data.data),
+
+  /** ユーザー管理一覧を取得する */
+  listUsers: (adminSecret: string) =>
+    apiClient
+      .get<ApiResponse<UserManageInfo[]>>('/api/admin/users', { params: { adminSecret } })
+      .then((r) => r.data.data),
+
+  /** 有効フラグを変更する */
+  updateActiveFlag: (adminSecret: string, username: string, activeFlag: 0 | 1) =>
+    apiClient
+      .put<ApiResponse<null>>(
+        `/api/admin/users/${encodeURIComponent(username)}/active`,
+        null,
+        { params: { adminSecret, activeFlag } },
+      )
+      .then((r) => r.data),
+
+  /** ユーザーと全写真を物理削除する */
+  deleteUser: (adminSecret: string, username: string) =>
+    apiClient
+      .delete<ApiResponse<null>>(
+        `/api/admin/users/${encodeURIComponent(username)}`,
+        { params: { adminSecret } },
+      )
+      .then((r) => r.data),
 };
