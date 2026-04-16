@@ -1,6 +1,7 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { LoginPage } from '../features/auth/components/LoginPage';
+import { AdminPage } from '../features/auth/components/AdminPage';
 import { AlbumPage } from '../features/album/components/AlbumPage';
 import { UploadPage } from '../features/photo/components/UploadPage';
 import { GroupPage } from '../features/group/components/GroupPage';
@@ -13,6 +14,7 @@ const PrivateRoute = ({ element }: { element: React.ReactElement }) =>
 export const AppRouter = () => (
   <Routes>
     <Route path="/login" element={<LoginPage />} />
+    <Route path="/admin" element={<AdminPage />} />
     <Route path="/album" element={<PrivateRoute element={<AlbumPage />} />} />
     <Route path="/upload" element={<PrivateRoute element={<UploadPage />} />} />
     <Route path="/photo-groups" element={<PrivateRoute element={<GroupPage />} />} />
