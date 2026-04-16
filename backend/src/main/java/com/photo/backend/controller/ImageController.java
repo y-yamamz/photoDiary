@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -31,11 +33,12 @@ public class ImageController {
 
     @GetMapping("/**")
     public ResponseEntity<byte[]> serveImage(HttpServletRequest request) throws IOException {
-        // /images/ 以降の相対パスを取得
+        // /images/ 以降の相対パスを取得し、URLデコード（日本語ファイル名対応）
         String uri = request.getRequestURI();
-        String relative = uri.replaceFirst("^/images/", "");
+        String relative = URLDecoder.decode(
+                uri.replaceFirst("^/images/", ""), StandardCharsets.UTF_8);
 
-        // パストラバーサル防止
+        // パストラバーサル防止（デコード後に検査することで %2F や %2E%2E も防ぐ）
         if (relative.contains("..")) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }

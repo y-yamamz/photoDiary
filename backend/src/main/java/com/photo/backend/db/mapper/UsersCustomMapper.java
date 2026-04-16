@@ -49,4 +49,12 @@ public interface UsersCustomMapper {
      * @return 全ユーザーリスト（storage_limit_mb, storage_used_bytes 含む）
      */
     List<Users> selectAllWithStorage();
+
+    /**
+     * 有効ユーザー（active_flag = 1）の人数を返す。
+     * 新規登録の上限チェックに使用する。
+     *
+     * @return 有効ユーザー数
+     */
+    int countActiveUsers();
 }

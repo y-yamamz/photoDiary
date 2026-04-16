@@ -17,6 +17,9 @@ public class Users {
 
     private Long storageUsedBytes;
 
+    /** 有効フラグ（1=有効, 0=無効） */
+    private Integer activeFlag;
+
     public Long getUserId() {
         return userId;
     }
@@ -71,5 +74,13 @@ public class Users {
 
     public void setStorageUsedBytes(Long storageUsedBytes) {
         this.storageUsedBytes = storageUsedBytes;
+    }
+
+    public Integer getActiveFlag() {
+        return activeFlag;
+    }
+
+    public void setActiveFlag(Integer activeFlag) {
+        this.activeFlag = activeFlag;
     }
 }

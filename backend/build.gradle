@@ -60,9 +60,20 @@ bootWar {
     archiveFileName = 'backend.war'
 }
 
+// Windows コンソールの文字化け対策: JVM のデフォルトエンコーディングを UTF-8 に強制
+bootRun {
+    jvmArgs = [
+        '-Dfile.encoding=UTF-8',
+        '-Dstdout.encoding=UTF-8',
+        '-Dstderr.encoding=UTF-8',
+    ]
+}
+
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+    options.debug = true
+}
+
 tasks.named('test') {
 	useJUnitPlatform()
-}
-tasks.withType(JavaCompile) {
-    options.debug = true
 }

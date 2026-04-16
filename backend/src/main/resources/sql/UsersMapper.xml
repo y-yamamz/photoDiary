@@ -6,7 +6,7 @@
        ResultMap
        カラム順: user_id, username, password,
                  storage_limit_mb, storage_used_bytes,
-                 created_at, updated_at
+                 active_flag, created_at, updated_at
   ============================================================ -->
   <resultMap id="BaseResultMap" type="com.photo.backend.db.entity.Users">
     <result column="user_id"            jdbcType="BIGINT"    property="userId" />
@@ -14,6 +14,7 @@
     <result column="password"           jdbcType="VARCHAR"   property="password" />
     <result column="storage_limit_mb"   jdbcType="INTEGER"   property="storageLimitMb" />
     <result column="storage_used_bytes" jdbcType="BIGINT"    property="storageUsedBytes" />
+    <result column="active_flag"        jdbcType="INTEGER"   property="activeFlag" />
     <result column="created_at"         jdbcType="TIMESTAMP" property="createdAt" />
     <result column="updated_at"         jdbcType="TIMESTAMP" property="updatedAt" />
   </resultMap>
@@ -90,7 +91,7 @@
   <sql id="Base_Column_List">
     user_id, username, password,
     storage_limit_mb, storage_used_bytes,
-    created_at, updated_at
+    active_flag, created_at, updated_at
   </sql>
 
   <!-- ============================================================
@@ -133,11 +134,11 @@
     INSERT INTO users (
       user_id, username, password,
       storage_limit_mb, storage_used_bytes,
-      created_at, updated_at
+      active_flag, created_at, updated_at
     ) VALUES (
       #{userId,jdbcType=BIGINT}, #{username,jdbcType=VARCHAR}, #{password,jdbcType=VARCHAR},
       #{storageLimitMb,jdbcType=INTEGER}, #{storageUsedBytes,jdbcType=BIGINT},
-      #{createdAt,jdbcType=TIMESTAMP}, #{updatedAt,jdbcType=TIMESTAMP}
+      #{activeFlag,jdbcType=INTEGER}, #{createdAt,jdbcType=TIMESTAMP}, #{updatedAt,jdbcType=TIMESTAMP}
     )
   </insert>
 
@@ -149,6 +150,7 @@
       <if test="password != null">password,</if>
       <if test="storageLimitMb != null">storage_limit_mb,</if>
       <if test="storageUsedBytes != null">storage_used_bytes,</if>
+      <if test="activeFlag != null">active_flag,</if>
       <if test="createdAt != null">created_at,</if>
       <if test="updatedAt != null">updated_at,</if>
     </trim>
@@ -158,6 +160,7 @@
       <if test="password != null">#{password,jdbcType=VARCHAR},</if>
       <if test="storageLimitMb != null">#{storageLimitMb,jdbcType=INTEGER},</if>
       <if test="storageUsedBytes != null">#{storageUsedBytes,jdbcType=BIGINT},</if>
+      <if test="activeFlag != null">#{activeFlag,jdbcType=INTEGER},</if>
       <if test="createdAt != null">#{createdAt,jdbcType=TIMESTAMP},</if>
       <if test="updatedAt != null">#{updatedAt,jdbcType=TIMESTAMP},</if>
     </trim>
@@ -185,6 +188,7 @@
       <if test="row.username != null">username = #{row.username,jdbcType=VARCHAR},</if>
       <if test="row.password != null">password = #{row.password,jdbcType=VARCHAR},</if>
       <if test="row.storageLimitMb != null">storage_limit_mb = #{row.storageLimitMb,jdbcType=INTEGER},</if>
+      <if test="row.activeFlag != null">active_flag = #{row.activeFlag,jdbcType=INTEGER},</if>
       <if test="row.createdAt != null">created_at = #{row.createdAt,jdbcType=TIMESTAMP},</if>
       <if test="row.updatedAt != null">updated_at = #{row.updatedAt,jdbcType=TIMESTAMP},</if>
     </set>
@@ -200,6 +204,7 @@
       username         = #{row.username,jdbcType=VARCHAR},
       password         = #{row.password,jdbcType=VARCHAR},
       storage_limit_mb = #{row.storageLimitMb,jdbcType=INTEGER},
+      active_flag      = #{row.activeFlag,jdbcType=INTEGER},
       created_at       = #{row.createdAt,jdbcType=TIMESTAMP},
       updated_at       = #{row.updatedAt,jdbcType=TIMESTAMP}
     <if test="example != null">

@@ -23,6 +23,11 @@
     WHERE user_id = #{userId,jdbcType=BIGINT}
   </update>
 
+  <!-- 有効ユーザー数（active_flag = 1）のカウント（登録上限チェック用） -->
+  <select id="countActiveUsers" resultType="int">
+    SELECT COUNT(*) FROM users WHERE active_flag = 1
+  </select>
+
   <!-- 全ユーザー容量情報一覧（管理者用） -->
   <select id="selectAllWithStorage" resultType="com.photo.backend.db.entity.Users">
     SELECT

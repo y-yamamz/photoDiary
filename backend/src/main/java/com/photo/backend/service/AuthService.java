@@ -4,6 +4,7 @@ import at.favre.lib.crypto.bcrypt.BCrypt;
 import com.photo.backend.common.exception.AppException;
 import com.photo.backend.db.entity.Users;
 import com.photo.backend.db.entity.UsersExample;
+import com.photo.backend.db.mapper.UsersCustomMapper;
 import com.photo.backend.db.mapper.UsersMapper;
 import com.photo.backend.dto.request.AdminResetPasswordRequest;
 import com.photo.backend.dto.request.ChangePasswordRequest;
@@ -28,13 +29,20 @@ import java.util.List;
 public class AuthService {
 
     private final UsersMapper usersMapper;
+    private final UsersCustomMapper usersCustomMapper;
     private final JwtProvider jwtProvider;
 
     @Value("${admin.secret}")
     private String adminSecret;
 
-    public AuthService(UsersMapper usersMapper, JwtProvider jwtProvider) {
+    @Value("${user.max-count:10}")
+    private int userMaxCount;
+
+    public AuthService(UsersMapper usersMapper,
+                       UsersCustomMapper usersCustomMapper,
+                       JwtProvider jwtProvider) {
         this.usersMapper = usersMapper;
+        this.usersCustomMapper = usersCustomMapper;
         this.jwtProvider = jwtProvider;
     }
 
@@ -61,6 +69,13 @@ public class AuthService {
         dupCheck.createCriteria().andUsernameEqualTo(username);
         if (!usersMapper.selectByExample(dupCheck).isEmpty()) {
             throw new AppException(HttpStatus.CONFLICT, "このユーザー名はすでに使用されています");
+        }
+
+        // 有効ユーザー数の上限チェック
+        int activeCount = usersCustomMapper.countActiveUsers();
+        if (activeCount >= userMaxCount) {
+            throw new AppException(HttpStatus.FORBIDDEN,
+                    "ユーザー登録の上限（" + userMaxCount + "人）に達しています。管理者にお問い合わせください。");
         }
 
         // パスワードをbcryptでハッシュ化して保存

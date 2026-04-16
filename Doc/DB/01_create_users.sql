@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS users (
   password   VARCHAR(255)  NOT NULL                 COMMENT 'パスワード（ハッシュ）',
   storage_limit_mb  INT  NOT NULL DEFAULT 500  COMMENT '容量上限(MB)',
   storage_used_bytes BIGINT NOT NULL DEFAULT 0  COMMENT '使用済み容量(bytes)',
+  active_flag INT NOT NULL DEFAULT 1  COMMENT '有効フラグ（0=無効, 1=有効）',
   created_at DATETIME      NOT NULL
              DEFAULT CURRENT_TIMESTAMP              COMMENT '作成日時',
   updated_at DATETIME               DEFAULT NULL
