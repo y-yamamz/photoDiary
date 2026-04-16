@@ -14,8 +14,10 @@ import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import { alpha } from '@mui/material/styles';
 import type { Group, PhotoFilter } from '../types';
+import type { StorageInfo } from '../../../shared/types';
 import { headerBarSx } from '../styles/albumSx';
 import { GradientText } from '../../../shared/components/GradientText';
+import { StorageBar } from '../../../shared/components/StorageBar';
 
 interface Props {
   groups: Group[];
@@ -24,6 +26,7 @@ interface Props {
   filteredCount: number;
   isSelectMode: boolean;
   selectedDate: { year?: number; month?: number; day?: number };
+  storage?: StorageInfo | null;
   onFilterChange: (patch: Partial<PhotoFilter>) => void;
   onClearFilter: () => void;
   onClearDate: () => void;
@@ -49,6 +52,7 @@ export const AlbumHeader = ({
   filteredCount,
   isSelectMode,
   selectedDate,
+  storage,
   onFilterChange,
   onClearFilter,
   onClearDate,
@@ -238,6 +242,11 @@ export const AlbumHeader = ({
           <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>グループ</Box>
         </Button>
       </Tooltip>
+
+      {/* ストレージ使用量（コンパクト表示） */}
+      {storage && (
+        <StorageBar storage={storage} compact />
+      )}
 
       {/* ログアウト */}
       <Tooltip title="ログアウト">

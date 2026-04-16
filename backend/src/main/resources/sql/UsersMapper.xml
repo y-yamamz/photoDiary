@@ -1,13 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.photo.backend.db.mapper.UsersMapper">
+
+  <!-- ============================================================
+       ResultMap
+       カラム順: user_id, username, password,
+                 storage_limit_mb, storage_used_bytes,
+                 created_at, updated_at
+  ============================================================ -->
   <resultMap id="BaseResultMap" type="com.photo.backend.db.entity.Users">
-    <result column="user_id" jdbcType="BIGINT" property="userId" />
-    <result column="username" jdbcType="VARCHAR" property="username" />
-    <result column="password" jdbcType="VARCHAR" property="password" />
-    <result column="created_at" jdbcType="TIMESTAMP" property="createdAt" />
-    <result column="updated_at" jdbcType="TIMESTAMP" property="updatedAt" />
+    <result column="user_id"            jdbcType="BIGINT"    property="userId" />
+    <result column="username"           jdbcType="VARCHAR"   property="username" />
+    <result column="password"           jdbcType="VARCHAR"   property="password" />
+    <result column="storage_limit_mb"   jdbcType="INTEGER"   property="storageLimitMb" />
+    <result column="storage_used_bytes" jdbcType="BIGINT"    property="storageUsedBytes" />
+    <result column="created_at"         jdbcType="TIMESTAMP" property="createdAt" />
+    <result column="updated_at"         jdbcType="TIMESTAMP" property="updatedAt" />
   </resultMap>
+
+  <!-- ============================================================
+       WHERE 句（selectByExample / deleteByExample 用）
+  ============================================================ -->
   <sql id="Example_Where_Clause">
     <where>
       <foreach collection="oredCriteria" item="criteria" separator="or">
@@ -37,6 +50,10 @@
       </foreach>
     </where>
   </sql>
+
+  <!-- ============================================================
+       WHERE 句（updateByExample 用）
+  ============================================================ -->
   <sql id="Update_By_Example_Where_Clause">
     <where>
       <foreach collection="example.oredCriteria" item="criteria" separator="or">
@@ -66,110 +83,128 @@
       </foreach>
     </where>
   </sql>
+
+  <!-- ============================================================
+       カラムリスト（SELECT 共通）
+  ============================================================ -->
   <sql id="Base_Column_List">
-    user_id, username, password, created_at, updated_at
+    user_id, username, password,
+    storage_limit_mb, storage_used_bytes,
+    created_at, updated_at
   </sql>
-  <select id="selectByExample" parameterType="com.photo.backend.db.entity.UsersExample" resultMap="BaseResultMap">
-    select
-    <if test="distinct">
-      distinct
-    </if>
+
+  <!-- ============================================================
+       SELECT
+  ============================================================ -->
+  <select id="selectByPrimaryKey" parameterType="java.lang.Long" resultMap="BaseResultMap">
+    SELECT
     <include refid="Base_Column_List" />
-    from users
+    FROM users
+    WHERE user_id = #{userId,jdbcType=BIGINT}
+  </select>
+
+  <select id="selectByExample" parameterType="com.photo.backend.db.entity.UsersExample" resultMap="BaseResultMap">
+    SELECT
+    <if test="distinct">distinct</if>
+    <include refid="Base_Column_List" />
+    FROM users
     <if test="_parameter != null">
       <include refid="Example_Where_Clause" />
     </if>
     <if test="orderByClause != null">
-      order by ${orderByClause}
+      ORDER BY ${orderByClause}
     </if>
   </select>
+
+  <select id="countByExample" parameterType="com.photo.backend.db.entity.UsersExample" resultType="java.lang.Long">
+    SELECT count(*) FROM users
+    <if test="_parameter != null">
+      <include refid="Example_Where_Clause" />
+    </if>
+  </select>
+
+  <!-- ============================================================
+       INSERT
+       storage_limit_mb / storage_used_bytes は NOT NULL DEFAULT あり。
+       insert      : 全カラム指定（DEFAULT値を使いたい場合は呼ばない）
+       insertSelective : null のカラムは省略し DB DEFAULT に委ねる
+  ============================================================ -->
+  <insert id="insert" parameterType="com.photo.backend.db.entity.Users">
+    INSERT INTO users (
+      user_id, username, password,
+      storage_limit_mb, storage_used_bytes,
+      created_at, updated_at
+    ) VALUES (
+      #{userId,jdbcType=BIGINT}, #{username,jdbcType=VARCHAR}, #{password,jdbcType=VARCHAR},
+      #{storageLimitMb,jdbcType=INTEGER}, #{storageUsedBytes,jdbcType=BIGINT},
+      #{createdAt,jdbcType=TIMESTAMP}, #{updatedAt,jdbcType=TIMESTAMP}
+    )
+  </insert>
+
+  <insert id="insertSelective" parameterType="com.photo.backend.db.entity.Users">
+    INSERT INTO users
+    <trim prefix="(" suffix=")" suffixOverrides=",">
+      <if test="userId != null">user_id,</if>
+      <if test="username != null">username,</if>
+      <if test="password != null">password,</if>
+      <if test="storageLimitMb != null">storage_limit_mb,</if>
+      <if test="storageUsedBytes != null">storage_used_bytes,</if>
+      <if test="createdAt != null">created_at,</if>
+      <if test="updatedAt != null">updated_at,</if>
+    </trim>
+    <trim prefix="VALUES (" suffix=")" suffixOverrides=",">
+      <if test="userId != null">#{userId,jdbcType=BIGINT},</if>
+      <if test="username != null">#{username,jdbcType=VARCHAR},</if>
+      <if test="password != null">#{password,jdbcType=VARCHAR},</if>
+      <if test="storageLimitMb != null">#{storageLimitMb,jdbcType=INTEGER},</if>
+      <if test="storageUsedBytes != null">#{storageUsedBytes,jdbcType=BIGINT},</if>
+      <if test="createdAt != null">#{createdAt,jdbcType=TIMESTAMP},</if>
+      <if test="updatedAt != null">#{updatedAt,jdbcType=TIMESTAMP},</if>
+    </trim>
+  </insert>
+
+  <!-- ============================================================
+       DELETE
+  ============================================================ -->
   <delete id="deleteByExample" parameterType="com.photo.backend.db.entity.UsersExample">
-    delete from users
+    DELETE FROM users
     <if test="_parameter != null">
       <include refid="Example_Where_Clause" />
     </if>
   </delete>
-  <insert id="insert" parameterType="com.photo.backend.db.entity.Users">
-    insert into users (user_id, username, password, 
-      created_at, updated_at)
-    values (#{userId,jdbcType=BIGINT}, #{username,jdbcType=VARCHAR}, #{password,jdbcType=VARCHAR}, 
-      #{createdAt,jdbcType=TIMESTAMP}, #{updatedAt,jdbcType=TIMESTAMP})
-  </insert>
-  <insert id="insertSelective" parameterType="com.photo.backend.db.entity.Users">
-    insert into users
-    <trim prefix="(" suffix=")" suffixOverrides=",">
-      <if test="userId != null">
-        user_id,
-      </if>
-      <if test="username != null">
-        username,
-      </if>
-      <if test="password != null">
-        password,
-      </if>
-      <if test="createdAt != null">
-        created_at,
-      </if>
-      <if test="updatedAt != null">
-        updated_at,
-      </if>
-    </trim>
-    <trim prefix="values (" suffix=")" suffixOverrides=",">
-      <if test="userId != null">
-        #{userId,jdbcType=BIGINT},
-      </if>
-      <if test="username != null">
-        #{username,jdbcType=VARCHAR},
-      </if>
-      <if test="password != null">
-        #{password,jdbcType=VARCHAR},
-      </if>
-      <if test="createdAt != null">
-        #{createdAt,jdbcType=TIMESTAMP},
-      </if>
-      <if test="updatedAt != null">
-        #{updatedAt,jdbcType=TIMESTAMP},
-      </if>
-    </trim>
-  </insert>
-  <select id="countByExample" parameterType="com.photo.backend.db.entity.UsersExample" resultType="java.lang.Long">
-    select count(*) from users
-    <if test="_parameter != null">
-      <include refid="Example_Where_Clause" />
-    </if>
-  </select>
+
+  <!-- ============================================================
+       UPDATE
+       storage_used_bytes は UsersCustomMapper.addStorageUsed で
+       アトミックに更新するため、ここには含めない。
+  ============================================================ -->
   <update id="updateByExampleSelective" parameterType="map">
-    update users
+    UPDATE users
     <set>
-      <if test="row.userId != null">
-        user_id = #{row.userId,jdbcType=BIGINT},
-      </if>
-      <if test="row.username != null">
-        username = #{row.username,jdbcType=VARCHAR},
-      </if>
-      <if test="row.password != null">
-        password = #{row.password,jdbcType=VARCHAR},
-      </if>
-      <if test="row.createdAt != null">
-        created_at = #{row.createdAt,jdbcType=TIMESTAMP},
-      </if>
-      <if test="row.updatedAt != null">
-        updated_at = #{row.updatedAt,jdbcType=TIMESTAMP},
-      </if>
+      <if test="row.userId != null">user_id = #{row.userId,jdbcType=BIGINT},</if>
+      <if test="row.username != null">username = #{row.username,jdbcType=VARCHAR},</if>
+      <if test="row.password != null">password = #{row.password,jdbcType=VARCHAR},</if>
+      <if test="row.storageLimitMb != null">storage_limit_mb = #{row.storageLimitMb,jdbcType=INTEGER},</if>
+      <if test="row.createdAt != null">created_at = #{row.createdAt,jdbcType=TIMESTAMP},</if>
+      <if test="row.updatedAt != null">updated_at = #{row.updatedAt,jdbcType=TIMESTAMP},</if>
     </set>
     <if test="example != null">
       <include refid="Update_By_Example_Where_Clause" />
     </if>
   </update>
+
   <update id="updateByExample" parameterType="map">
-    update users
-    set user_id = #{row.userId,jdbcType=BIGINT},
-      username = #{row.username,jdbcType=VARCHAR},
-      password = #{row.password,jdbcType=VARCHAR},
-      created_at = #{row.createdAt,jdbcType=TIMESTAMP},
-      updated_at = #{row.updatedAt,jdbcType=TIMESTAMP}
+    UPDATE users
+    SET
+      user_id          = #{row.userId,jdbcType=BIGINT},
+      username         = #{row.username,jdbcType=VARCHAR},
+      password         = #{row.password,jdbcType=VARCHAR},
+      storage_limit_mb = #{row.storageLimitMb,jdbcType=INTEGER},
+      created_at       = #{row.createdAt,jdbcType=TIMESTAMP},
+      updated_at       = #{row.updatedAt,jdbcType=TIMESTAMP}
     <if test="example != null">
       <include refid="Update_By_Example_Where_Clause" />
     </if>
   </update>
+
 </mapper>

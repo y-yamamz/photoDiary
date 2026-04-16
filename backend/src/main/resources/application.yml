@@ -41,6 +41,7 @@ admin:
 logging:
   level:
     root: INFO
+    com.photo.backend.service.PhotoService: DEBUG
   log:
     # ログファイルの出力先ディレクトリ (絶対パス or 相対パス)
     # 例) /var/log/photodiary  または  logs

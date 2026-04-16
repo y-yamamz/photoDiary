@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.photo.backend.db.mapper.UsersCustomMapper">
+
+  <!-- storage_used_bytes を直接上書き（再計算・補正用） -->
+  <update id="setStorageUsed">
+    UPDATE users
+    SET storage_used_bytes = #{bytes,jdbcType=BIGINT}
+    WHERE user_id = #{userId,jdbcType=BIGINT}
+  </update>
+
+  <!-- storage_used_bytes をアトミックに増減（0未満にはならない） -->
+  <update id="addStorageUsed">
+    UPDATE users
+    SET storage_used_bytes = GREATEST(0, storage_used_bytes + #{delta,jdbcType=BIGINT})
+    WHERE user_id = #{userId,jdbcType=BIGINT}
+  </update>
+
+  <!-- 管理者による容量上限の変更 -->
+  <update id="updateStorageLimit">
+    UPDATE users
+    SET storage_limit_mb = #{limitMb,jdbcType=INTEGER}
+    WHERE user_id = #{userId,jdbcType=BIGINT}
+  </update>
+
+  <!-- 全ユーザー容量情報一覧（管理者用） -->
+  <select id="selectAllWithStorage" resultType="com.photo.backend.db.entity.Users">
+    SELECT
+      user_id          AS userId,
+      username         AS username,
+      created_at       AS createdAt,
+      storage_limit_mb  AS storageLimitMb,
+      storage_used_bytes AS storageUsedBytes
+    FROM users
+    ORDER BY username
+  </select>
+
+</mapper>

@@ -2,12 +2,19 @@ package com.photo.backend.service;
 
 import com.photo.backend.common.exception.AppException;
 import com.photo.backend.db.entity.Photos;
+import com.photo.backend.db.entity.PhotosExample;
+import com.photo.backend.db.entity.Users;
 import com.photo.backend.db.mapper.PhotosCustomMapper;
 import com.photo.backend.db.mapper.PhotosMapper;
+import com.photo.backend.db.mapper.UsersCustomMapper;
+import com.photo.backend.db.mapper.UsersMapper;
+import com.photo.backend.dto.response.RecalculateStorageResponse;
 import com.photo.backend.dto.request.PhotoBulkDeleteRequest;
 import com.photo.backend.dto.request.PhotoBulkUpdateRequest;
 import com.photo.backend.dto.request.PhotoUpdateRequest;
 import com.photo.backend.dto.response.PhotoResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -52,6 +59,8 @@ import java.util.List;
 @Service
 public class PhotoService {
 
+    private static final Logger log = LoggerFactory.getLogger(PhotoService.class);
+
     /**
      * DB登録・取得時に使用する日時フォーマット。
      * タイムゾーン情報は持たず、秒単位まで保持する。
@@ -72,6 +81,12 @@ public class PhotoService {
     /** MyBatis カスタムマッパー（複合条件検索・一括操作）。 */
     private final PhotosCustomMapper photosCustomMapper;
 
+    /** ユーザー情報取得マッパー（容量チェックに使用）。 */
+    private final UsersMapper usersMapper;
+
+    /** ユーザー容量のアトミック更新マッパー。 */
+    private final UsersCustomMapper usersCustomMapper;
+
     /**
      * ファイル保存先のベースパス。
      * application.properties の {@code storage.base-path} から注入される。
@@ -85,13 +100,19 @@ public class PhotoService {
      *
      * @param photosMapper       基本CRUD用マッパー
      * @param photosCustomMapper 複合操作用カスタムマッパー
+     * @param usersMapper        ユーザー情報取得マッパー
+     * @param usersCustomMapper  容量アトミック更新マッパー
      * @param storagePath        ファイル保存先ベースパス（application.properties から取得）
      */
     public PhotoService(PhotosMapper photosMapper,
                         PhotosCustomMapper photosCustomMapper,
+                        UsersMapper usersMapper,
+                        UsersCustomMapper usersCustomMapper,
                         @Value("${storage.base-path}") String storagePath) {
         this.photosMapper = photosMapper;
         this.photosCustomMapper = photosCustomMapper;
+        this.usersMapper = usersMapper;
+        this.usersCustomMapper = usersCustomMapper;
         this.storagePath = storagePath;
     }
 
@@ -139,6 +160,9 @@ public class PhotoService {
     public PhotoResponse upload(Long userId, MultipartFile file,
                                 Long groupId, String takenAt,
                                 String location, String description) {
+        // 容量上限チェック（保存前に確認する）
+        checkStorageCapacity(userId, file.getSize());
+
         // 撮影日時を基準にディレクトリを決定してファイルを保存する
         String filePath = saveFile(file, userId, takenAt);
 
@@ -148,7 +172,12 @@ public class PhotoService {
         photosMapper.insertSelective(photo);
 
         // INSERT後に採番されたphotoIdでレコードを再取得して返す（タグなし）
-        return toSimpleResponse(photosMapper.selectByPrimaryKey(photo.getPhotoId()));
+        PhotoResponse result = toSimpleResponse(photosMapper.selectByPrimaryKey(photo.getPhotoId()));
+
+        // ファイル保存・DB登録成功後に使用量を加算する
+        usersCustomMapper.addStorageUsed(userId, file.getSize());
+
+        return result;
     }
 
     // ── 一括登録 ────────────────────────────────────────────────
@@ -174,7 +203,12 @@ public class PhotoService {
     public List<PhotoResponse> bulkUpload(Long userId, List<MultipartFile> files,
                                           Long groupId, String takenAt,
                                           String location, String description) {
+        // 一括アップロード前に合計サイズで上限チェックを行う
+        long totalSize = files.stream().mapToLong(MultipartFile::getSize).sum();
+        checkStorageCapacity(userId, totalSize);
+
         List<PhotoResponse> results = new ArrayList<>();
+        long savedSize = 0;
         for (MultipartFile file : files) {
             // 撮影日時を基準にディレクトリを決定してファイルを保存する
             String filePath = saveFile(file, userId, takenAt);
@@ -182,6 +216,12 @@ public class PhotoService {
                     groupId, takenAt, location, description);
             photosMapper.insertSelective(photo);
             results.add(toSimpleResponse(photosMapper.selectByPrimaryKey(photo.getPhotoId())));
+            savedSize += file.getSize();
+        }
+
+        // 全ファイル保存・DB登録成功後にまとめて使用量を加算する
+        if (savedSize > 0) {
+            usersCustomMapper.addStorageUsed(userId, savedSize);
         }
         return results;
     }
@@ -248,12 +288,20 @@ public class PhotoService {
      * @throws AppException 写真が存在しないか、ログインユーザーの所有でない場合（HTTP 404）
      */
     public void delete(Long userId, Long photoId) {
-        // 所有者確認と同時に削除対象レコードを取得する（ファイルパス取得のため）
+        // 所有者確認と同時に削除対象レコードを取得する（ファイルパスとサイズ取得のため）
         Photos photo = getOwnedPhoto(userId, photoId);
+
+        // DB削除前に物理ファイルサイズを取得する（削除後は取得不可）
+        long fileSize = getPhysicalFileSize(photo.getFilePath());
 
         // DB削除後に物理ファイルを削除する（順序が逆になると参照エラーのリスクがある）
         photosMapper.deleteByPrimaryKey(photoId);
         deletePhysicalFile(photo.getFilePath());
+
+        // 削除完了後に使用量を減算する（負数を渡してアトミックに減らす）
+        if (fileSize > 0) {
+            usersCustomMapper.addStorageUsed(userId, -fileSize);
+        }
     }
 
     // ── 一括削除 ────────────────────────────────────────────────
@@ -280,19 +328,32 @@ public class PhotoService {
             throw new AppException(HttpStatus.BAD_REQUEST, "削除対象のIDが指定されていません");
         }
 
-        // DB削除前にファイルパスを収集する（DB削除後は取得できなくなるため先に収集する）
+        // DB削除前に対象写真を収集する（DB削除後はファイルパス・サイズが取得できなくなるため先に収集する）
         // 自分の写真のみを対象とし、他ユーザーのIDは除外する
-        List<String> filePaths = request.getPhotoIds().stream()
+        List<Photos> ownedPhotos = request.getPhotoIds().stream()
                 .map(photosMapper::selectByPrimaryKey)
                 .filter(p -> p != null && userId.equals(p.getUserId()))
+                .collect(java.util.stream.Collectors.toList());
+
+        List<String> filePaths = ownedPhotos.stream()
                 .map(Photos::getFilePath)
                 .collect(java.util.stream.Collectors.toList());
+
+        // DB削除前に合計ファイルサイズを取得する
+        long totalSize = filePaths.stream()
+                .mapToLong(this::getPhysicalFileSize)
+                .sum();
 
         // DB一括削除（SQL WHERE userId = ? AND photoId IN (...)）
         int count = photosCustomMapper.bulkDeleteByIds(userId, request.getPhotoIds());
 
         // DB削除完了後に物理ファイルを削除する
         filePaths.forEach(this::deletePhysicalFile);
+
+        // 削除完了後に使用量をまとめて減算する
+        if (totalSize > 0) {
+            usersCustomMapper.addStorageUsed(userId, -totalSize);
+        }
         return count;
     }
 
@@ -508,6 +569,102 @@ public class PhotoService {
         } catch (IOException e) {
             // 物理ファイルの削除失敗はログ出力のみとし、DB削除の結果には影響させない
             System.err.println("物理ファイルの削除に失敗しました: " + physical + " / " + e.getMessage());
+        }
+    }
+
+    /**
+     * 物理ファイルのサイズ（bytes）を返す。
+     * ファイルが存在しない場合・取得失敗時は 0 を返す。
+     *
+     * @param filePath DBに保存されたURLパス（"/images/..." 形式）
+     * @return ファイルサイズ（bytes）。取得不可の場合は 0
+     */
+    private long getPhysicalFileSize(String filePath) {
+        if (filePath == null) return 0;
+        String relative = filePath.replaceFirst("^/images/", "");
+        Path physical = Paths.get(storagePath).resolve(relative);
+        try {
+            if (!Files.exists(physical)) {
+                log.warn("[getPhysicalFileSize] file not found: {}", physical.toAbsolutePath());
+                return 0;
+            }
+            return Files.size(physical);
+        } catch (IOException e) {
+            log.error("[getPhysicalFileSize] failed to get size: {} / {}", physical.toAbsolutePath(), e.getMessage());
+            return 0;
+        }
+    }
+
+    /**
+     * ユーザーの実際のファイルサイズを再集計し、storage_used_bytes を上書き更新する。
+     *
+     * <p>DB上のファイルパスをもとに物理ファイルサイズを合算する。
+     * ファイルが存在しないパスはサイズ 0 として扱う。
+     *
+     * @param userId   対象ユーザーID
+     * @param username 対象ユーザー名（レスポンス表示用）
+     * @return 再計算前後の使用量を含むレスポンスDTO
+     */
+    public RecalculateStorageResponse recalculateUserStorage(Long userId, String username) {
+        // 再計算前の使用量を取得する
+        Users user = usersMapper.selectByPrimaryKey(userId);
+        long oldBytes = user.getStorageUsedBytes() != null ? user.getStorageUsedBytes() : 0;
+
+        // DBに登録された全写真のファイルパスを取得する
+        PhotosExample example = new PhotosExample();
+        example.createCriteria().andUserIdEqualTo(userId);
+        List<Photos> photos = photosMapper.selectByExample(example);
+
+        log.info("[recalculate] user={} userId={} photoCount={} storagePath={}",
+                username, userId, photos.size(), storagePath);
+
+        // 物理ファイルの合計サイズを算出する（存在しないファイルは 0 バイトとして扱う）
+        long newBytes = 0;
+        for (Photos p : photos) {
+            long size = getPhysicalFileSize(p.getFilePath());
+            log.debug("[recalculate] filePath={} size={}", p.getFilePath(), size);
+            newBytes += size;
+        }
+
+        log.info("[recalculate] user={} oldBytes={} newBytes={} diff={}",
+                username, oldBytes, newBytes, newBytes - oldBytes);
+
+        // storage_used_bytes を直接上書きする
+        usersCustomMapper.setStorageUsed(userId, newBytes);
+
+        return RecalculateStorageResponse.builder()
+                .username(username)
+                .photoCount(photos.size())
+                .oldUsedBytes(oldBytes)
+                .newUsedBytes(newBytes)
+                .diffBytes(newBytes - oldBytes)
+                .build();
+    }
+
+    /**
+     * ユーザーの容量上限を確認し、超過する場合は例外をスローする。
+     *
+     * @param userId       対象ユーザーID
+     * @param uploadBytes  アップロードしようとしているファイルの合計サイズ（bytes）
+     * @throws AppException 上限を超える場合（HTTP 413）
+     */
+    private void checkStorageCapacity(Long userId, long uploadBytes) {
+        Users user = usersMapper.selectByPrimaryKey(userId);
+        if (user == null) {
+            throw new AppException(org.springframework.http.HttpStatus.UNAUTHORIZED, "ユーザーが見つかりません");
+        }
+
+        int limitMb = user.getStorageLimitMb() != null ? user.getStorageLimitMb() : 500;
+        long limitBytes = (long) limitMb * 1024 * 1024;
+        long usedBytes = user.getStorageUsedBytes() != null ? user.getStorageUsedBytes() : 0;
+
+        if (usedBytes + uploadBytes > limitBytes) {
+            long remainingBytes = limitBytes - usedBytes;
+            long remainingMb = remainingBytes / (1024 * 1024);
+            throw new AppException(
+                    org.springframework.http.HttpStatus.PAYLOAD_TOO_LARGE,
+                    String.format("容量が不足しています。残り容量: %d MB、上限: %d MB", remainingMb, limitMb)
+            );
         }
     }
 

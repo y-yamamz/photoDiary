@@ -17,6 +17,8 @@ public interface UsersMapper {
 
     int insertSelective(Users row);
 
+    Users selectByPrimaryKey(Long userId);
+
     List<Users> selectByExample(UsersExample example);
 
     int updateByExampleSelective(@Param("row") Users row, @Param("example") UsersExample example);

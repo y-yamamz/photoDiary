@@ -13,6 +13,10 @@ public class Users {
 
     private Date updatedAt;
 
+    private Integer storageLimitMb;
+
+    private Long storageUsedBytes;
+
     public Long getUserId() {
         return userId;
     }
@@ -51,5 +55,21 @@ public class Users {
 
     public void setUpdatedAt(Date updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public Integer getStorageLimitMb() {
+        return storageLimitMb;
+    }
+
+    public void setStorageLimitMb(Integer storageLimitMb) {
+        this.storageLimitMb = storageLimitMb;
+    }
+
+    public Long getStorageUsedBytes() {
+        return storageUsedBytes;
+    }
+
+    public void setStorageUsedBytes(Long storageUsedBytes) {
+        this.storageUsedBytes = storageUsedBytes;
     }
 }

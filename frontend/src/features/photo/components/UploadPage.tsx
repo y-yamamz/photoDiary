@@ -18,6 +18,7 @@ import { usePhotoUpload } from '../hooks/usePhotoUpload';
 import { uploadPageSx, dropzoneSx, progressBarSx } from '../styles/uploadSx';
 import { GlassCard } from '../../../shared/components/GlassCard';
 import { GradientText } from '../../../shared/components/GradientText';
+import { StorageBar } from '../../../shared/components/StorageBar';
 import { formatFileSize } from '../utils/fileUtils';
 import { alpha } from '@mui/material/styles';
 
@@ -25,7 +26,7 @@ export const UploadPage = () => {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const { form, state, groups, setFiles, convertFiles, removeFile, updateField, submit, reset } = usePhotoUpload();
+  const { form, state, groups, storage, setFiles, convertFiles, removeFile, updateField, submit, reset } = usePhotoUpload();
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
@@ -57,6 +58,13 @@ export const UploadPage = () => {
         <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
           {/* 左：ファイル選択 */}
           <GlassCard sx={{ flex: '1 1 320px', p: 3 }}>
+            {/* ストレージ使用量 */}
+            {storage && (
+              <Box sx={{ mb: 2.5 }}>
+                <StorageBar storage={storage} />
+              </Box>
+            )}
+
             <Typography variant="subtitle2" fontWeight={600} color="text.secondary" sx={{ mb: 2 }}>
               ファイルを選択（複数可）
             </Typography>

@@ -5,6 +5,7 @@ import { albumApi } from '../../album/api/albumApi';
 import { photoApi } from '../api/photoApi';
 import { extractApiError } from '../../../shared/api/apiClient';
 import { logger } from '../../../shared/utils/logger';
+import { useStorage } from '../../../shared/hooks/useStorage';
 import type { Group } from '../../../shared/types';
 
 /** datetime-local 入力用のローカル日時文字列を生成 */
@@ -41,6 +42,7 @@ export const usePhotoUpload = () => {
   const [groups, setGroups] = useState<Group[]>([]);
   const [form, setForm] = useState<UploadFormValues>(defaultForm());
   const [state, setState] = useState<UploadState>(defaultState());
+  const { storage, refresh: refreshStorage } = useStorage();
 
   // グループ一覧をAPIから取得
   useEffect(() => {
@@ -197,6 +199,7 @@ export const usePhotoUpload = () => {
 
       setState((s) => ({ ...s, uploading: false, success: true, previews: [] }));
       setForm(defaultForm());
+      refreshStorage();
     } catch (err) {
       logger.error('写真のアップロードに失敗しました', 'usePhotoUpload', err);
       setState((s) => ({
@@ -221,5 +224,5 @@ export const usePhotoUpload = () => {
     };
   }, []); // eslint-disable-line
 
-  return { form, state, groups, setFiles, convertFiles, removeFile, updateField, submit, reset };
+  return { form, state, groups, storage, setFiles, convertFiles, removeFile, updateField, submit, reset };
 };

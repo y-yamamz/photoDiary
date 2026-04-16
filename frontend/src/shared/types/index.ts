@@ -78,6 +78,13 @@ export interface GroupRequest {
   comment?: string;
 }
 
+export interface StorageInfo {
+  usedBytes: number;
+  limitMb: number;
+  limitBytes: number;
+  usagePercent: number;
+}
+
 // ツリー構造
 export interface DateTreeNode {
   year: number;

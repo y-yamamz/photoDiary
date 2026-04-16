@@ -9,7 +9,8 @@
       "Bash(grep -E \"^/|\\\\.java$\")",
       "Bash(powershell:*)",
       "Bash(python:*)",
-      "Bash(./gradlew compileJava -q)"
+      "Bash(./gradlew compileJava -q)",
+      "Bash(./gradlew compileJava)"
     ]
   }
 }

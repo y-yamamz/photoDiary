@@ -13,6 +13,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import CollectionsIcon from '@mui/icons-material/Collections';
 import { useAlbum } from '../hooks/useAlbum';
 import { useAuth } from '../../auth/hooks/useAuth';
+import { useStorage } from '../../../shared/hooks/useStorage';
 import { AlbumHeader } from './AlbumHeader';
 import { DateTree } from './DateTree';
 import { PhotoCard } from './PhotoCard';
@@ -25,6 +26,7 @@ import { sidebarSx, photoGridSx } from '../styles/albumSx';
 export const AlbumPage = () => {
   const navigate = useNavigate();
   const { logout } = useAuth();
+  const { storage, refresh: refreshStorage } = useStorage();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
@@ -64,9 +66,10 @@ export const AlbumPage = () => {
     error,
   } = useAlbum();
 
-  const handleBulkDelete = () => {
-    deletePhotos(selectedIds);
+  const handleBulkDelete = async () => {
+    await deletePhotos(selectedIds);
     setBulkDeleteOpen(false);
+    refreshStorage();
   };
 
   const handleBulkDownload = useCallback(async () => {
@@ -145,6 +148,7 @@ export const AlbumPage = () => {
         filteredCount={filteredPhotos.length}
         isSelectMode={isSelectMode}
         selectedDate={selectedDate}
+        storage={storage}
         onFilterChange={updateFilter}
         onClearFilter={clearFilter}
         onClearDate={() => selectDate()}
@@ -253,7 +257,7 @@ export const AlbumPage = () => {
           groups={groups}
           onClose={() => setSelectedPhoto(null)}
           onUpdate={updatePhoto}
-          onDelete={(id) => deletePhotos(new Set([id]))}
+          onDelete={async (id) => { await deletePhotos(new Set([id])); refreshStorage(); }}
         />
       )}
 
