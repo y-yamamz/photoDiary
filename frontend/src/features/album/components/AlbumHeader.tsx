@@ -12,6 +12,7 @@ import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
 import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+import CampaignIcon from '@mui/icons-material/Campaign';
 import { alpha } from '@mui/material/styles';
 import type { Group, PhotoFilter } from '../types';
 import type { StorageInfo } from '../../../shared/types';
@@ -27,12 +28,16 @@ interface Props {
   isSelectMode: boolean;
   selectedDate: { year?: number; month?: number; day?: number };
   storage?: StorageInfo | null;
+  /** 未読お知らせ件数（バッジ表示用） */
+  unreadNoticeCount?: number;
   onFilterChange: (patch: Partial<PhotoFilter>) => void;
   onClearFilter: () => void;
   onClearDate: () => void;
   onLogout: () => void;
   onNavigateUpload: () => void;
   onNavigateGroups: () => void;
+  /** 掲示板ページへ遷移するコールバック */
+  onNavigateBoard: () => void;
   onEnterSelectMode: () => void;
   onToggleDateDrawer: () => void;
 }
@@ -53,12 +58,14 @@ export const AlbumHeader = ({
   isSelectMode,
   selectedDate,
   storage,
+  unreadNoticeCount = 0,
   onFilterChange,
   onClearFilter,
   onClearDate,
   onLogout,
   onNavigateUpload,
   onNavigateGroups,
+  onNavigateBoard,
   onEnterSelectMode,
   onToggleDateDrawer,
 }: Props) => {
@@ -241,6 +248,28 @@ export const AlbumHeader = ({
         >
           <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>グループ</Box>
         </Button>
+      </Tooltip>
+
+      {/* お知らせボタン（未読件数バッジ付き） */}
+      <Tooltip title="お知らせ・管理者へ連絡">
+        <Badge badgeContent={unreadNoticeCount > 0 ? unreadNoticeCount : undefined} color="error"
+          sx={{ '& .MuiBadge-badge': { fontSize: '0.6rem', minWidth: 16, height: 16 } }}>
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<CampaignIcon />}
+            onClick={onNavigateBoard}
+            sx={{
+              borderColor: alpha('#fbbf24', 0.4),
+              color: '#fcd34d',
+              whiteSpace: 'nowrap',
+              minWidth: 0,
+              '&:hover': { borderColor: '#fbbf24', background: alpha('#f59e0b', 0.1) },
+            }}
+          >
+            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>お知らせ</Box>
+          </Button>
+        </Badge>
       </Tooltip>
 
       {/* ストレージ使用量（コンパクト表示） */}

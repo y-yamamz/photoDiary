@@ -1,0 +1,270 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.photo.backend.db.mapper.InquiryRepliesMapper">
+  <resultMap id="BaseResultMap" type="com.photo.backend.db.entity.InquiryReplies">
+    <id column="reply_id" jdbcType="BIGINT" property="replyId" />
+    <result column="inquiry_id" jdbcType="BIGINT" property="inquiryId" />
+    <result column="target_type" jdbcType="TINYINT" property="targetType" />
+    <result column="notice_id" jdbcType="BIGINT" property="noticeId" />
+    <result column="created_at" jdbcType="TIMESTAMP" property="createdAt" />
+  </resultMap>
+  <resultMap extends="BaseResultMap" id="ResultMapWithBLOBs" type="com.photo.backend.db.entity.InquiryReplies">
+    <result column="body" jdbcType="LONGVARCHAR" property="body" />
+  </resultMap>
+  <sql id="Example_Where_Clause">
+    <where>
+      <foreach collection="oredCriteria" item="criteria" separator="or">
+        <if test="criteria.valid">
+          <trim prefix="(" prefixOverrides="and" suffix=")">
+            <foreach collection="criteria.criteria" item="criterion">
+              <choose>
+                <when test="criterion.noValue">
+                  and ${criterion.condition}
+                </when>
+                <when test="criterion.singleValue">
+                  and ${criterion.condition} #{criterion.value}
+                </when>
+                <when test="criterion.betweenValue">
+                  and ${criterion.condition} #{criterion.value} and #{criterion.secondValue}
+                </when>
+                <when test="criterion.listValue">
+                  and ${criterion.condition}
+                  <foreach close=")" collection="criterion.value" item="listItem" open="(" separator=",">
+                    #{listItem}
+                  </foreach>
+                </when>
+              </choose>
+            </foreach>
+          </trim>
+        </if>
+      </foreach>
+    </where>
+  </sql>
+  <sql id="Update_By_Example_Where_Clause">
+    <where>
+      <foreach collection="example.oredCriteria" item="criteria" separator="or">
+        <if test="criteria.valid">
+          <trim prefix="(" prefixOverrides="and" suffix=")">
+            <foreach collection="criteria.criteria" item="criterion">
+              <choose>
+                <when test="criterion.noValue">
+                  and ${criterion.condition}
+                </when>
+                <when test="criterion.singleValue">
+                  and ${criterion.condition} #{criterion.value}
+                </when>
+                <when test="criterion.betweenValue">
+                  and ${criterion.condition} #{criterion.value} and #{criterion.secondValue}
+                </when>
+                <when test="criterion.listValue">
+                  and ${criterion.condition}
+                  <foreach close=")" collection="criterion.value" item="listItem" open="(" separator=",">
+                    #{listItem}
+                  </foreach>
+                </when>
+              </choose>
+            </foreach>
+          </trim>
+        </if>
+      </foreach>
+    </where>
+  </sql>
+  <sql id="Base_Column_List">
+    reply_id, inquiry_id, target_type, notice_id, created_at
+  </sql>
+  <sql id="Blob_Column_List">
+    body
+  </sql>
+  <select id="selectByExampleWithBLOBs" parameterType="com.photo.backend.db.entity.InquiryRepliesExample" resultMap="ResultMapWithBLOBs">
+    select
+    <if test="distinct">
+      distinct
+    </if>
+    <include refid="Base_Column_List" />
+    ,
+    <include refid="Blob_Column_List" />
+    from inquiry_replies
+    <if test="_parameter != null">
+      <include refid="Example_Where_Clause" />
+    </if>
+    <if test="orderByClause != null">
+      order by ${orderByClause}
+    </if>
+  </select>
+  <select id="selectByExample" parameterType="com.photo.backend.db.entity.InquiryRepliesExample" resultMap="BaseResultMap">
+    select
+    <if test="distinct">
+      distinct
+    </if>
+    <include refid="Base_Column_List" />
+    from inquiry_replies
+    <if test="_parameter != null">
+      <include refid="Example_Where_Clause" />
+    </if>
+    <if test="orderByClause != null">
+      order by ${orderByClause}
+    </if>
+  </select>
+  <select id="selectByPrimaryKey" parameterType="java.lang.Long" resultMap="ResultMapWithBLOBs">
+    select 
+    <include refid="Base_Column_List" />
+    ,
+    <include refid="Blob_Column_List" />
+    from inquiry_replies
+    where reply_id = #{replyId,jdbcType=BIGINT}
+  </select>
+  <delete id="deleteByPrimaryKey" parameterType="java.lang.Long">
+    delete from inquiry_replies
+    where reply_id = #{replyId,jdbcType=BIGINT}
+  </delete>
+  <delete id="deleteByExample" parameterType="com.photo.backend.db.entity.InquiryRepliesExample">
+    delete from inquiry_replies
+    <if test="_parameter != null">
+      <include refid="Example_Where_Clause" />
+    </if>
+  </delete>
+  <insert id="insert" parameterType="com.photo.backend.db.entity.InquiryReplies">
+    insert into inquiry_replies (reply_id, inquiry_id, target_type, 
+      notice_id, created_at, body
+      )
+    values (#{replyId,jdbcType=BIGINT}, #{inquiryId,jdbcType=BIGINT}, #{targetType,jdbcType=TINYINT}, 
+      #{noticeId,jdbcType=BIGINT}, #{createdAt,jdbcType=TIMESTAMP}, #{body,jdbcType=LONGVARCHAR}
+      )
+  </insert>
+  <insert id="insertSelective" parameterType="com.photo.backend.db.entity.InquiryReplies">
+    insert into inquiry_replies
+    <trim prefix="(" suffix=")" suffixOverrides=",">
+      <if test="replyId != null">
+        reply_id,
+      </if>
+      <if test="inquiryId != null">
+        inquiry_id,
+      </if>
+      <if test="targetType != null">
+        target_type,
+      </if>
+      <if test="noticeId != null">
+        notice_id,
+      </if>
+      <if test="createdAt != null">
+        created_at,
+      </if>
+      <if test="body != null">
+        body,
+      </if>
+    </trim>
+    <trim prefix="values (" suffix=")" suffixOverrides=",">
+      <if test="replyId != null">
+        #{replyId,jdbcType=BIGINT},
+      </if>
+      <if test="inquiryId != null">
+        #{inquiryId,jdbcType=BIGINT},
+      </if>
+      <if test="targetType != null">
+        #{targetType,jdbcType=TINYINT},
+      </if>
+      <if test="noticeId != null">
+        #{noticeId,jdbcType=BIGINT},
+      </if>
+      <if test="createdAt != null">
+        #{createdAt,jdbcType=TIMESTAMP},
+      </if>
+      <if test="body != null">
+        #{body,jdbcType=LONGVARCHAR},
+      </if>
+    </trim>
+  </insert>
+  <select id="countByExample" parameterType="com.photo.backend.db.entity.InquiryRepliesExample" resultType="java.lang.Long">
+    select count(*) from inquiry_replies
+    <if test="_parameter != null">
+      <include refid="Example_Where_Clause" />
+    </if>
+  </select>
+  <update id="updateByExampleSelective" parameterType="map">
+    update inquiry_replies
+    <set>
+      <if test="row.replyId != null">
+        reply_id = #{row.replyId,jdbcType=BIGINT},
+      </if>
+      <if test="row.inquiryId != null">
+        inquiry_id = #{row.inquiryId,jdbcType=BIGINT},
+      </if>
+      <if test="row.targetType != null">
+        target_type = #{row.targetType,jdbcType=TINYINT},
+      </if>
+      <if test="row.noticeId != null">
+        notice_id = #{row.noticeId,jdbcType=BIGINT},
+      </if>
+      <if test="row.createdAt != null">
+        created_at = #{row.createdAt,jdbcType=TIMESTAMP},
+      </if>
+      <if test="row.body != null">
+        body = #{row.body,jdbcType=LONGVARCHAR},
+      </if>
+    </set>
+    <if test="example != null">
+      <include refid="Update_By_Example_Where_Clause" />
+    </if>
+  </update>
+  <update id="updateByExampleWithBLOBs" parameterType="map">
+    update inquiry_replies
+    set reply_id = #{row.replyId,jdbcType=BIGINT},
+      inquiry_id = #{row.inquiryId,jdbcType=BIGINT},
+      target_type = #{row.targetType,jdbcType=TINYINT},
+      notice_id = #{row.noticeId,jdbcType=BIGINT},
+      created_at = #{row.createdAt,jdbcType=TIMESTAMP},
+      body = #{row.body,jdbcType=LONGVARCHAR}
+    <if test="example != null">
+      <include refid="Update_By_Example_Where_Clause" />
+    </if>
+  </update>
+  <update id="updateByExample" parameterType="map">
+    update inquiry_replies
+    set reply_id = #{row.replyId,jdbcType=BIGINT},
+      inquiry_id = #{row.inquiryId,jdbcType=BIGINT},
+      target_type = #{row.targetType,jdbcType=TINYINT},
+      notice_id = #{row.noticeId,jdbcType=BIGINT},
+      created_at = #{row.createdAt,jdbcType=TIMESTAMP}
+    <if test="example != null">
+      <include refid="Update_By_Example_Where_Clause" />
+    </if>
+  </update>
+  <update id="updateByPrimaryKeySelective" parameterType="com.photo.backend.db.entity.InquiryReplies">
+    update inquiry_replies
+    <set>
+      <if test="inquiryId != null">
+        inquiry_id = #{inquiryId,jdbcType=BIGINT},
+      </if>
+      <if test="targetType != null">
+        target_type = #{targetType,jdbcType=TINYINT},
+      </if>
+      <if test="noticeId != null">
+        notice_id = #{noticeId,jdbcType=BIGINT},
+      </if>
+      <if test="createdAt != null">
+        created_at = #{createdAt,jdbcType=TIMESTAMP},
+      </if>
+      <if test="body != null">
+        body = #{body,jdbcType=LONGVARCHAR},
+      </if>
+    </set>
+    where reply_id = #{replyId,jdbcType=BIGINT}
+  </update>
+  <update id="updateByPrimaryKeyWithBLOBs" parameterType="com.photo.backend.db.entity.InquiryReplies">
+    update inquiry_replies
+    set inquiry_id = #{inquiryId,jdbcType=BIGINT},
+      target_type = #{targetType,jdbcType=TINYINT},
+      notice_id = #{noticeId,jdbcType=BIGINT},
+      created_at = #{createdAt,jdbcType=TIMESTAMP},
+      body = #{body,jdbcType=LONGVARCHAR}
+    where reply_id = #{replyId,jdbcType=BIGINT}
+  </update>
+  <update id="updateByPrimaryKey" parameterType="com.photo.backend.db.entity.InquiryReplies">
+    update inquiry_replies
+    set inquiry_id = #{inquiryId,jdbcType=BIGINT},
+      target_type = #{targetType,jdbcType=TINYINT},
+      notice_id = #{noticeId,jdbcType=BIGINT},
+      created_at = #{createdAt,jdbcType=TIMESTAMP}
+    where reply_id = #{replyId,jdbcType=BIGINT}
+  </update>
+</mapper>

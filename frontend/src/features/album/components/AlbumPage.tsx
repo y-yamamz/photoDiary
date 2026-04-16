@@ -7,7 +7,7 @@ import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import ClearIcon from '@mui/icons-material/Clear';
 import { alpha } from '@mui/material/styles';
 import { Grid } from '@mui/material';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CollectionsIcon from '@mui/icons-material/Collections';
@@ -22,6 +22,7 @@ import { BulkActionBar } from './BulkActionBar';
 import { BulkEditDialog } from './BulkEditDialog';
 import { downloadPhotosAsZip } from '../utils/downloadUtils';
 import { sidebarSx, photoGridSx } from '../styles/albumSx';
+import { boardApi } from '../../board/api/boardApi';
 
 export const AlbumPage = () => {
   const navigate = useNavigate();
@@ -35,6 +36,15 @@ export const AlbumPage = () => {
   const [downloading, setDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState<{ done: number; total: number } | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  /** ヘッダーバッジ用：未読お知らせ件数 */
+  const [unreadNoticeCount, setUnreadNoticeCount] = useState(0);
+
+  // アルバムページ初期表示時に未読お知らせ件数を取得する
+  useEffect(() => {
+    boardApi.getUnreadCount()
+      .then(setUnreadNoticeCount)
+      .catch(() => { /* バッジ取得失敗は無視（本体機能に影響させない） */ });
+  }, []);
 
   const {
     photos,
@@ -149,12 +159,14 @@ export const AlbumPage = () => {
         isSelectMode={isSelectMode}
         selectedDate={selectedDate}
         storage={storage}
+        unreadNoticeCount={unreadNoticeCount}
         onFilterChange={updateFilter}
         onClearFilter={clearFilter}
         onClearDate={() => selectDate()}
         onLogout={logout}
         onNavigateUpload={() => navigate('/upload')}
         onNavigateGroups={() => navigate('/photo-groups')}
+        onNavigateBoard={() => navigate('/board')}
         onEnterSelectMode={enterSelectMode}
         onToggleDateDrawer={() => setDrawerOpen((o) => !o)}
       />
