@@ -1,7 +1,7 @@
 import {
   Box, Typography, Dialog, DialogTitle, DialogContent, DialogActions,
   Button, CircularProgress, Alert, Drawer, Chip, Checkbox, FormControlLabel,
-  useTheme, useMediaQuery,
+  IconButton, useTheme, useMediaQuery,
 } from '@mui/material';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import ClearIcon from '@mui/icons-material/Clear';
@@ -105,10 +105,21 @@ export const AlbumPage = () => {
   };
   const dateLabel = formatDateLabel(selectedDate);
 
-  // 日付ツリーの中身（PC サイドバー / スマホ Drawer 共用）
+  const dateTreeNode = (
+    <DateTree
+      dateTree={dateTree}
+      selectedDate={selectedDate}
+      expandedYears={expandedYears}
+      expandedMonths={expandedMonths}
+      onSelectDate={(y, m, d) => { selectDate(y, m, d); if (isMobile) setDrawerOpen(false); }}
+      onToggleYear={toggleYear}
+      onToggleMonth={toggleMonth}
+    />
+  );
+
+  // PC サイドバー用（タイトル + 選択 Chip + ツリー）
   const dateTreeContent = (
     <>
-      {/* ヘッダー行：タイトル + 選択中の日付 Chip */}
       <Box sx={{ px: 1.5, py: 0.5, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
         <Typography
           variant="caption"
@@ -136,17 +147,7 @@ export const AlbumPage = () => {
           />
         )}
       </Box>
-      <Box sx={{ mt: 0.5 }}>
-        <DateTree
-          dateTree={dateTree}
-          selectedDate={selectedDate}
-          expandedYears={expandedYears}
-          expandedMonths={expandedMonths}
-          onSelectDate={(y, m, d) => { selectDate(y, m, d); if (isMobile) setDrawerOpen(false); }}
-          onToggleYear={toggleYear}
-          onToggleMonth={toggleMonth}
-        />
-      </Box>
+      <Box sx={{ mt: 0.5 }}>{dateTreeNode}</Box>
     </>
   );
 
@@ -190,15 +191,88 @@ export const AlbumPage = () => {
             onClose={() => setDrawerOpen(false)}
             PaperProps={{
               sx: {
-                width: 260,
-                background: 'rgba(10,10,26,0.97)',
-                backdropFilter: 'blur(20px)',
-                borderRight: `1px solid ${alpha('#a78bfa', 0.15)}`,
-                p: 1,
+                width: 300,
+                background: 'linear-gradient(160deg, rgba(12,10,30,0.98) 0%, rgba(18,12,40,0.98) 100%)',
+                backdropFilter: 'blur(28px)',
+                borderRight: `1px solid ${alpha('#a78bfa', 0.18)}`,
+                boxShadow: `8px 0 48px ${alpha('#000', 0.6)}`,
+                p: 0,
+                display: 'flex',
+                flexDirection: 'column',
               },
             }}
           >
-            {dateTreeContent}
+            {/* Drawer ヘッダー */}
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                px: 2,
+                py: 1.5,
+                borderBottom: `1px solid ${alpha('#a78bfa', 0.12)}`,
+                background: alpha('#1e1b4b', 0.4),
+                flexShrink: 0,
+              }}
+            >
+              <Typography
+                variant="caption"
+                sx={{
+                  fontWeight: 700,
+                  letterSpacing: '0.12em',
+                  textTransform: 'uppercase',
+                  color: alpha('#a78bfa', 0.8),
+                  fontSize: '0.65rem',
+                }}
+              >
+                日付で絞り込み
+              </Typography>
+              <IconButton
+                size="small"
+                onClick={() => setDrawerOpen(false)}
+                sx={{
+                  width: 30,
+                  height: 30,
+                  borderRadius: '8px',
+                  color: alpha('#c4b5fd', 0.5),
+                  '&:hover': { background: alpha('#a78bfa', 0.15), color: '#c4b5fd' },
+                }}
+              >
+                <ClearIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+            </Box>
+            {/* Drawer 本体（スクロール可能） */}
+            <Box
+              sx={{
+                flex: 1,
+                overflowY: 'auto',
+                p: 1.5,
+                '&::-webkit-scrollbar': { width: 3 },
+                '&::-webkit-scrollbar-thumb': { background: alpha('#a78bfa', 0.25), borderRadius: 2 },
+              }}
+            >
+              {/* 選択中 Chip */}
+              {dateLabel && (
+                <Box sx={{ mb: 1.5 }}>
+                  <Chip
+                    size="small"
+                    icon={<CalendarMonthIcon sx={{ fontSize: 13, color: '#a78bfa !important' }} />}
+                    label={dateLabel}
+                    onDelete={() => selectDate()}
+                    deleteIcon={<ClearIcon sx={{ fontSize: 12 }} />}
+                    sx={{
+                      height: 26,
+                      fontSize: '0.75rem',
+                      background: alpha('#7c3aed', 0.25),
+                      color: '#c4b5fd',
+                      border: `1px solid ${alpha('#a78bfa', 0.45)}`,
+                      '& .MuiChip-deleteIcon': { color: alpha('#c4b5fd', 0.6), '&:hover': { color: '#f87171' } },
+                    }}
+                  />
+                </Box>
+              )}
+              {dateTreeNode}
+            </Box>
           </Drawer>
         )}
 
