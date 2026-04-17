@@ -10,12 +10,13 @@
   <select id="countUnread" resultType="int">
     SELECT COUNT(*)
     FROM notices n
-    WHERE NOT EXISTS (
-      SELECT 1
-      FROM notice_reads nr
-      WHERE nr.notice_id = n.notice_id
-        AND nr.user_id = #{userId,jdbcType=BIGINT}
-    )
+    WHERE (n.target_user_id IS NULL OR n.target_user_id = #{userId,jdbcType=BIGINT})
+      AND NOT EXISTS (
+        SELECT 1
+        FROM notice_reads nr
+        WHERE nr.notice_id = n.notice_id
+          AND nr.user_id = #{userId,jdbcType=BIGINT}
+      )
   </select>
 
   <!--

@@ -14,6 +14,8 @@ export interface Notice {
   createdAt: string;
   /** 未読フラグ（notice_reads に存在しない場合 true） */
   unread: boolean;
+  /** 個人宛通知フラグ（管理者の個別返信で生成された通知の場合 true） */
+  personal: boolean;
 }
 
 /**

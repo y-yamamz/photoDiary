@@ -12,6 +12,7 @@ import SendIcon from '@mui/icons-material/Send';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
+import ReplyIcon from '@mui/icons-material/Reply';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
@@ -306,6 +307,20 @@ export const BoardPage = () => {
                     >
                       {notice.title}
                     </Typography>
+                    {/* 返信ありバッジ（個人宛通知） */}
+                    {notice.personal && (
+                      <Chip
+                        icon={<ReplyIcon sx={{ fontSize: '12px !important', color: '#a78bfa !important' }} />}
+                        label="返信あり"
+                        size="small"
+                        sx={{
+                          height: 18, fontSize: '0.65rem', fontWeight: 700,
+                          background: alpha('#7c3aed', 0.2),
+                          color: '#a78bfa',
+                          border: `1px solid ${alpha('#a78bfa', 0.4)}`,
+                        }}
+                      />
+                    )}
                     {/* 未読バッジ */}
                     {notice.unread && (
                       <Chip

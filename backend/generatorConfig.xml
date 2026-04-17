@@ -35,7 +35,7 @@
 
 
         <!-- テーブル指定 -->
-        <table tableName="photo_tags" domainObjectName="PhotoTags" />
+        <table tableName="" domainObjectName="" />
     </context>
 
 </generatorConfiguration>

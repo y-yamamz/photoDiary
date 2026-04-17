@@ -7,6 +7,7 @@
 
 CREATE TABLE IF NOT EXISTS notices (
   notice_id  BIGINT        NOT NULL AUTO_INCREMENT  COMMENT 'お知らせID',
+  target_user_id BIGINT NULL DEFAULT NULL COMMENT '個人宛通知の対象ユーザーID（NULLの場合は全体配信）',
   title      VARCHAR(255)  NOT NULL                 COMMENT 'タイトル',
   body       TEXT          NOT NULL                 COMMENT '本文',
   created_at DATETIME      NOT NULL

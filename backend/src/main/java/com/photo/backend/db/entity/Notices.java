@@ -5,6 +5,9 @@ import java.util.Date;
 public class Notices {
     private Long noticeId;
 
+    /** 個人宛通知の対象ユーザーID（NULL = 全体配信） */
+    private Long targetUserId;
+
     private String title;
 
     private Date createdAt;
@@ -19,6 +22,14 @@ public class Notices {
 
     public void setNoticeId(Long noticeId) {
         this.noticeId = noticeId;
+    }
+
+    public Long getTargetUserId() {
+        return targetUserId;
+    }
+
+    public void setTargetUserId(Long targetUserId) {
+        this.targetUserId = targetUserId;
     }
 
     public String getTitle() {

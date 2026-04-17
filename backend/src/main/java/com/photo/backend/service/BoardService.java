@@ -39,6 +39,7 @@ public class BoardService {
     private static final String DATE_FORMAT = "yyyy-MM-dd HH:mm";
 
     private final NoticesMapper          noticesMapper;
+    private final NoticesCustomMapper    noticesCustomMapper;
     private final NoticeReadsMapper      noticeReadsMapper;
     private final NoticeReadsCustomMapper noticeReadsCustomMapper;
     private final InquiriesMapper        inquiriesMapper;
@@ -46,12 +47,14 @@ public class BoardService {
     private final UsersMapper            usersMapper;
 
     public BoardService(NoticesMapper noticesMapper,
+                        NoticesCustomMapper noticesCustomMapper,
                         NoticeReadsMapper noticeReadsMapper,
                         NoticeReadsCustomMapper noticeReadsCustomMapper,
                         InquiriesMapper inquiriesMapper,
                         InquiryRepliesMapper inquiryRepliesMapper,
                         UsersMapper usersMapper) {
         this.noticesMapper           = noticesMapper;
+        this.noticesCustomMapper     = noticesCustomMapper;
         this.noticeReadsMapper       = noticeReadsMapper;
         this.noticeReadsCustomMapper = noticeReadsCustomMapper;
         this.inquiriesMapper         = inquiriesMapper;
@@ -79,10 +82,8 @@ public class BoardService {
     public List<NoticeResponse> getNoticesForUser(Long userId) {
         SimpleDateFormat sdf = new SimpleDateFormat(DATE_FORMAT);
 
-        // 1. 全お知らせ取得（body を含む selectByExampleWithBLOBs を使用）
-        NoticesExample example = new NoticesExample();
-        example.setOrderByClause("created_at DESC");
-        List<Notices> notices = noticesMapper.selectByExampleWithBLOBs(example);
+        // 1. 全体配信 + 当該ユーザー宛の個人通知を取得（新しい順）
+        List<Notices> notices = noticesCustomMapper.selectForUserWithBLOBs(userId);
 
         if (notices.isEmpty()) {
             return Collections.emptyList();
@@ -96,7 +97,7 @@ public class BoardService {
                 .map(NoticeReads::getNoticeId)
                 .collect(Collectors.toSet());
 
-        // 3. 未読フラグを付与してレスポンス構築
+        // 3. 未読フラグ・個人通知フラグを付与してレスポンス構築
         List<NoticeResponse> responses = notices.stream()
                 .map(n -> NoticeResponse.builder()
                         .noticeId(n.getNoticeId())
@@ -104,6 +105,7 @@ public class BoardService {
                         .body(n.getBody())
                         .createdAt(n.getCreatedAt() != null ? sdf.format(n.getCreatedAt()) : null)
                         .unread(!readIds.contains(n.getNoticeId()))
+                        .personal(n.getTargetUserId() != null)
                         .build())
                 .collect(Collectors.toList());
 
@@ -375,12 +377,12 @@ public class BoardService {
 
         Long noticeId = null;
 
-        // targetType=1（全体お知らせとして投稿）の場合
         if (request.getTargetType() == 1) {
+            // targetType=1（全体お知らせとして投稿）の場合
             if (request.getNoticeTitle() == null || request.getNoticeTitle().trim().isEmpty()) {
                 throw new AppException(HttpStatus.BAD_REQUEST, "全体お知らせとして投稿する場合はタイトルを入力してください");
             }
-            // ① notices テーブルに INSERT
+            // ① notices テーブルに全体配信として INSERT
             Notices notice = new Notices();
             notice.setTitle(request.getNoticeTitle().trim());
             notice.setBody(request.getBody().trim());
@@ -388,6 +390,15 @@ public class BoardService {
             noticesMapper.insertSelective(notice);
             // AUTO_INCREMENT で採番された ID を取得
             noticeId = notice.getNoticeId();
+        } else {
+            // targetType=0（個別返信）の場合：返信先ユーザーのお知らせに個人通知を登録
+            Notices personalNotice = new Notices();
+            personalNotice.setTargetUserId(inquiry.getUserId());
+            personalNotice.setTitle("「" + inquiry.getSubject() + "」へのご返信");
+            personalNotice.setBody(request.getBody().trim());
+            personalNotice.setCreatedAt(new Date());
+            noticesMapper.insertSelective(personalNotice);
+            noticeId = personalNotice.getNoticeId();
         }
 
         // ② inquiry_replies テーブルに INSERT

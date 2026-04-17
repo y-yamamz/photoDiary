@@ -3,6 +3,7 @@
 <mapper namespace="com.photo.backend.db.mapper.NoticesMapper">
   <resultMap id="BaseResultMap" type="com.photo.backend.db.entity.Notices">
     <id column="notice_id" jdbcType="BIGINT" property="noticeId" />
+    <result column="target_user_id" jdbcType="BIGINT" property="targetUserId" />
     <result column="title" jdbcType="VARCHAR" property="title" />
     <result column="created_at" jdbcType="TIMESTAMP" property="createdAt" />
     <result column="updated_at" jdbcType="TIMESTAMP" property="updatedAt" />
@@ -69,7 +70,7 @@
     </where>
   </sql>
   <sql id="Base_Column_List">
-    notice_id, title, created_at, updated_at
+    notice_id, target_user_id, title, created_at, updated_at
   </sql>
   <sql id="Blob_Column_List">
     body
@@ -123,9 +124,9 @@
     </if>
   </delete>
   <insert id="insert" parameterType="com.photo.backend.db.entity.Notices">
-    insert into notices (notice_id, title, created_at, 
+    insert into notices (notice_id, target_user_id, title, created_at,
       updated_at, body)
-    values (#{noticeId,jdbcType=BIGINT}, #{title,jdbcType=VARCHAR}, #{createdAt,jdbcType=TIMESTAMP}, 
+    values (#{noticeId,jdbcType=BIGINT}, #{targetUserId,jdbcType=BIGINT}, #{title,jdbcType=VARCHAR}, #{createdAt,jdbcType=TIMESTAMP},
       #{updatedAt,jdbcType=TIMESTAMP}, #{body,jdbcType=LONGVARCHAR})
   </insert>
   <insert id="insertSelective" parameterType="com.photo.backend.db.entity.Notices">
@@ -133,6 +134,9 @@
     <trim prefix="(" suffix=")" suffixOverrides=",">
       <if test="noticeId != null">
         notice_id,
+      </if>
+      <if test="targetUserId != null">
+        target_user_id,
       </if>
       <if test="title != null">
         title,
@@ -150,6 +154,9 @@
     <trim prefix="values (" suffix=")" suffixOverrides=",">
       <if test="noticeId != null">
         #{noticeId,jdbcType=BIGINT},
+      </if>
+      <if test="targetUserId != null">
+        #{targetUserId,jdbcType=BIGINT},
       </if>
       <if test="title != null">
         #{title,jdbcType=VARCHAR},
@@ -177,6 +184,9 @@
       <if test="row.noticeId != null">
         notice_id = #{row.noticeId,jdbcType=BIGINT},
       </if>
+      <if test="row.targetUserId != null">
+        target_user_id = #{row.targetUserId,jdbcType=BIGINT},
+      </if>
       <if test="row.title != null">
         title = #{row.title,jdbcType=VARCHAR},
       </if>
@@ -197,6 +207,7 @@
   <update id="updateByExampleWithBLOBs" parameterType="map">
     update notices
     set notice_id = #{row.noticeId,jdbcType=BIGINT},
+      target_user_id = #{row.targetUserId,jdbcType=BIGINT},
       title = #{row.title,jdbcType=VARCHAR},
       created_at = #{row.createdAt,jdbcType=TIMESTAMP},
       updated_at = #{row.updatedAt,jdbcType=TIMESTAMP},
@@ -208,6 +219,7 @@
   <update id="updateByExample" parameterType="map">
     update notices
     set notice_id = #{row.noticeId,jdbcType=BIGINT},
+      target_user_id = #{row.targetUserId,jdbcType=BIGINT},
       title = #{row.title,jdbcType=VARCHAR},
       created_at = #{row.createdAt,jdbcType=TIMESTAMP},
       updated_at = #{row.updatedAt,jdbcType=TIMESTAMP}
@@ -218,6 +230,9 @@
   <update id="updateByPrimaryKeySelective" parameterType="com.photo.backend.db.entity.Notices">
     update notices
     <set>
+      <if test="targetUserId != null">
+        target_user_id = #{targetUserId,jdbcType=BIGINT},
+      </if>
       <if test="title != null">
         title = #{title,jdbcType=VARCHAR},
       </if>
@@ -235,7 +250,8 @@
   </update>
   <update id="updateByPrimaryKeyWithBLOBs" parameterType="com.photo.backend.db.entity.Notices">
     update notices
-    set title = #{title,jdbcType=VARCHAR},
+    set target_user_id = #{targetUserId,jdbcType=BIGINT},
+      title = #{title,jdbcType=VARCHAR},
       created_at = #{createdAt,jdbcType=TIMESTAMP},
       updated_at = #{updatedAt,jdbcType=TIMESTAMP},
       body = #{body,jdbcType=LONGVARCHAR}
@@ -243,7 +259,8 @@
   </update>
   <update id="updateByPrimaryKey" parameterType="com.photo.backend.db.entity.Notices">
     update notices
-    set title = #{title,jdbcType=VARCHAR},
+    set target_user_id = #{targetUserId,jdbcType=BIGINT},
+      title = #{title,jdbcType=VARCHAR},
       created_at = #{createdAt,jdbcType=TIMESTAMP},
       updated_at = #{updatedAt,jdbcType=TIMESTAMP}
     where notice_id = #{noticeId,jdbcType=BIGINT}

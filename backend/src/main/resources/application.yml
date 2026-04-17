@@ -40,7 +40,7 @@ admin:
 
 user:
   # 新規登録できる最大ユーザー数（active_flag=1 のユーザー数が上限に達したら登録拒否）
-  max-count: ${USER_MAX_COUNT:5}
+  max-count: ${USER_MAX_COUNT:50}
 
 logging:
   charset:

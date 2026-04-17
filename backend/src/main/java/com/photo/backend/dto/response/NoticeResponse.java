@@ -31,4 +31,11 @@ public class NoticeResponse {
      * フロント側でのバッジ表示・NEW ラベル表示に使用する。
      */
     private boolean unread;
+
+    /**
+     * 個人宛通知フラグ。
+     * 管理者が問い合わせに個別返信した際に生成される通知の場合 true。
+     * フロント側で「返信あり」バッジの表示に使用する。
+     */
+    private boolean personal;
 }
