@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import type { UploadFormValues, UploadState } from '../types';
-import { validateImageFile, createPreviewUrl, revokePreviewUrl, readExifDate, fileLastModified, convertToOutputFormat, matchesOutputFormat, formatFileSize } from '../utils/fileUtils';
+import { validateImageFile, createPreviewUrl, revokePreviewUrl, readExifDate, fileLastModified, convertToOutputFormat, matchesOutputFormat } from '../utils/fileUtils';
 import { albumApi } from '../../album/api/albumApi';
 import { photoApi } from '../api/photoApi';
 import { extractApiError } from '../../../shared/api/apiClient';

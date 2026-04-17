@@ -3,6 +3,7 @@ import {
   Box, Typography, Button, TextField, Select, MenuItem,
   FormControl, InputLabel, LinearProgress, Alert, Chip,
   IconButton, Tooltip, CircularProgress, Checkbox, FormControlLabel,
+  useTheme, useMediaQuery,
 } from '@mui/material';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -25,6 +26,8 @@ export const UploadPage = () => {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { form, state, groups, storage, setFiles, removeFile, updateField, submit, reset } = usePhotoUpload();
 
   const handleDrop = (e: React.DragEvent) => {
@@ -68,30 +71,57 @@ export const UploadPage = () => {
               ファイルを選択（複数可）
             </Typography>
 
-            {/* ドロップゾーン */}
-            <Box
-              sx={dropzoneSx(isDragging)}
-              onClick={() => fileInputRef.current?.click()}
-              onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-              onDragLeave={() => setIsDragging(false)}
-              onDrop={handleDrop}
-            >
-              <CloudUploadIcon sx={{ fontSize: 48, color: alpha('#a78bfa', 0.6), mb: 1 }} />
-              <Typography variant="body1" fontWeight={600} color="text.secondary">
-                クリックまたはドラッグ＆ドロップ
-              </Typography>
-              <Typography variant="caption" color="text.disabled" sx={{ mt: 0.5, display: 'block' }}>
-                JPEG / PNG / WebP / HEIC（最大 20MB / 枚）・複数選択可
-              </Typography>
+            {/* ファイル選択エリア：PC=ドロップゾーン / スマホ=ボタンのみ */}
+            {isMobile ? (
               <Button
                 variant="outlined"
-                size="small"
-                startIcon={<ImageIcon />}
-                sx={{ mt: 2, borderColor: alpha('#a78bfa', 0.4), color: '#c4b5fd' }}
+                fullWidth
+                size="large"
+                startIcon={<CloudUploadIcon />}
+                onClick={() => fileInputRef.current?.click()}
+                sx={{
+                  py: 2,
+                  borderRadius: 3,
+                  borderColor: alpha('#a78bfa', 0.45),
+                  borderWidth: 2,
+                  color: '#c4b5fd',
+                  fontSize: '1rem',
+                  fontWeight: 600,
+                  background: alpha('#1e1b4b', 0.25),
+                  '&:hover': {
+                    borderColor: '#a78bfa',
+                    background: alpha('#7c3aed', 0.15),
+                  },
+                  '&:active': { transform: 'scale(0.98)' },
+                }}
               >
-                ファイルを参照
+                写真を選択する
               </Button>
-            </Box>
+            ) : (
+              <Box
+                sx={dropzoneSx(isDragging)}
+                onClick={() => fileInputRef.current?.click()}
+                onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={handleDrop}
+              >
+                <CloudUploadIcon sx={{ fontSize: 48, color: alpha('#a78bfa', 0.6), mb: 1 }} />
+                <Typography variant="body1" fontWeight={600} color="text.secondary">
+                  クリックまたはドラッグ＆ドロップ
+                </Typography>
+                <Typography variant="caption" color="text.disabled" sx={{ mt: 0.5, display: 'block' }}>
+                  JPEG / PNG / WebP / HEIC（最大 20MB / 枚）・複数選択可
+                </Typography>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<ImageIcon />}
+                  sx={{ mt: 2, borderColor: alpha('#a78bfa', 0.4), color: '#c4b5fd' }}
+                >
+                  ファイルを参照
+                </Button>
+              </Box>
+            )}
 
             <input
               ref={fileInputRef}

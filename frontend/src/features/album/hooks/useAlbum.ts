@@ -33,15 +33,17 @@ export const useAlbum = () => {
       setPhotos(photosData ?? []);
       setGroups(groupsData ?? []);
 
-      // 最新年月を初期展開
+      // 最新日付を初期選択・展開
       if (photosData && photosData.length > 0) {
         const dates = photosData
           .map((p) => new Date(p.takenAt ?? p.createdAt))
           .sort((a, b) => b.getTime() - a.getTime());
-        const latestYear = dates[0].getFullYear();
+        const latestYear  = dates[0].getFullYear();
         const latestMonth = dates[0].getMonth() + 1;
+        const latestDay   = dates[0].getDate();
         setExpandedYears(new Set([latestYear]));
         setExpandedMonths(new Set([`${latestYear}-${latestMonth}`]));
+        setSelectedDate({ year: latestYear, month: latestMonth, day: latestDay });
       }
     } catch (err) {
       setError(extractApiError(err));
