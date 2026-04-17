@@ -50,6 +50,12 @@ dependencies {
 	// SQL実行ログ（パラメータ込みの実SQL出力）
 	implementation 'p6spy:p6spy:3.9.1'
 
+	// 画像圧縮・変換（JPEG）
+	implementation 'net.coobird:thumbnailator:0.4.20'
+
+	// EXIF メタデータ抽出（撮影日時の自動取得）
+	implementation 'com.drewnoakes:metadata-extractor:2.19.0'
+
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 

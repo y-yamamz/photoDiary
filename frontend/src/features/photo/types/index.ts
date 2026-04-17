@@ -1,4 +1,5 @@
 export type ConvertFormat = 'none' | 'jpeg' | 'png' | 'webp';
+export type OutputFormat = 'jpeg' | 'webp';
 
 export interface UploadFormValues {
   files: File[];
@@ -7,7 +8,7 @@ export interface UploadFormValues {
   overrideTakenAt: boolean;  // true: 入力日付で全ファイルを処理 / false: 各ファイルのEXIF日付を使用
   location: string;
   description: string;
-  convertFormat: ConvertFormat;
+  outputFormat: OutputFormat;  // 保存フォーマット（jpeg: デフォルト / webp: 任意選択）
 }
 
 export interface UploadState {

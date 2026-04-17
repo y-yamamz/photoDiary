@@ -59,9 +59,10 @@ public class PhotoController {
             @RequestParam(required = false) Long groupId,
             @RequestParam(required = false) String takenAt,
             @RequestParam(required = false) String location,
-            @RequestParam(required = false) String description) {
+            @RequestParam(required = false) String description,
+            @RequestParam(required = false, defaultValue = "jpeg") String outputFormat) {
         Long userId = (Long) req.getAttribute("userId");
-        PhotoResponse response = photoService.upload(userId, file, groupId, takenAt, location, description);
+        PhotoResponse response = photoService.upload(userId, file, groupId, takenAt, location, description, outputFormat);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response));
     }
 
@@ -74,9 +75,10 @@ public class PhotoController {
             @RequestParam(required = false) Long groupId,
             @RequestParam(required = false) String takenAt,
             @RequestParam(required = false) String location,
-            @RequestParam(required = false) String description) {
+            @RequestParam(required = false) String description,
+            @RequestParam(required = false, defaultValue = "jpeg") String outputFormat) {
         Long userId = (Long) req.getAttribute("userId");
-        List<PhotoResponse> responses = photoService.bulkUpload(userId, files, groupId, takenAt, location, description);
+        List<PhotoResponse> responses = photoService.bulkUpload(userId, files, groupId, takenAt, location, description, outputFormat);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(responses));
     }
 

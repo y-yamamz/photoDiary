@@ -12,7 +12,6 @@ import LocationOnIcon from '@mui/icons-material/LocationOn';
 import EventIcon from '@mui/icons-material/Event';
 import ImageIcon from '@mui/icons-material/Image';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
-import TransformIcon from '@mui/icons-material/Transform';
 import { useNavigate } from 'react-router-dom';
 import { usePhotoUpload } from '../hooks/usePhotoUpload';
 import { uploadPageSx, dropzoneSx, progressBarSx } from '../styles/uploadSx';
@@ -26,7 +25,7 @@ export const UploadPage = () => {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const { form, state, groups, storage, setFiles, convertFiles, removeFile, updateField, submit, reset } = usePhotoUpload();
+  const { form, state, groups, storage, setFiles, removeFile, updateField, submit, reset } = usePhotoUpload();
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
@@ -182,12 +181,12 @@ export const UploadPage = () => {
               </Box>
             )}
 
-            {/* HEIC 変換中プログレスバー */}
+            {/* フォーマット変換中プログレスバー */}
             {state.converting && (
               <Box sx={{ mt: 2 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
                   <Typography variant="caption" color="#c4b5fd">
-                    HEIC → {form.convertFormat.toUpperCase()} に変換中... ({state.convertDone}/{state.convertTotal}枚)
+                    {form.outputFormat.toUpperCase()} に変換中... ({state.convertDone}/{state.convertTotal}枚)
                   </Typography>
                   <Typography variant="caption" color="#a78bfa">{state.convertProgress}%</Typography>
                 </Box>
@@ -308,35 +307,20 @@ export const UploadPage = () => {
                 fullWidth
               />
 
+              {/* 保存フォーマット選択（バックエンド変換） */}
               <FormControl fullWidth size="small">
-                <InputLabel>HEIC 変換形式</InputLabel>
+                <InputLabel>保存フォーマット</InputLabel>
                 <Select
-                  label="HEIC 変換形式"
-                  value={form.convertFormat}
-                  onChange={(e) => updateField('convertFormat', e.target.value as 'none' | 'jpeg' | 'png' | 'webp')}
-                  startAdornment={<TransformIcon sx={{ mr: 1, color: 'text.secondary', fontSize: 18 }} />}
+                  label="保存フォーマット"
+                  value={form.outputFormat}
+                  onChange={(e) => updateField('outputFormat', e.target.value as 'jpeg' | 'webp')}
+                  startAdornment={<ImageIcon sx={{ mr: 1, color: 'text.secondary', fontSize: 18 }} />}
                 >
-                  <MenuItem value="none">変換なし</MenuItem>
-                  <MenuItem value="jpeg">JPEG (.jpg)</MenuItem>
-                  <MenuItem value="png">PNG (.png)</MenuItem>
-                  <MenuItem value="webp">WebP (.webp)</MenuItem>
+                  <MenuItem value="jpeg">JPEG（標準・推奨）</MenuItem>
+                  <MenuItem value="webp">WebP（高圧縮）</MenuItem>
                 </Select>
               </FormControl>
 
-              {form.files.some((f) => /\.heic$/i.test(f.name)) && form.convertFormat !== 'none' && (
-                <Button
-                  variant="outlined"
-                  fullWidth
-                  onClick={convertFiles}
-                  disabled={state.converting || state.uploading}
-                  startIcon={state.converting ? <CircularProgress size={18} color="inherit" /> : <TransformIcon />}
-                  sx={{ borderColor: alpha('#a78bfa', 0.4), color: '#c4b5fd' }}
-                >
-                  {state.converting
-                    ? `変換中... (${state.convertDone}/${state.convertTotal}枚)`
-                    : 'HEICを変換する'}
-                </Button>
-              )}
 
               <Box sx={{ display: 'flex', gap: 1.5, mt: 1 }}>
                 <Button

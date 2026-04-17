@@ -1,10 +1,12 @@
 import {
   Box, Typography, Dialog, DialogTitle, DialogContent, DialogActions,
-  Button, CircularProgress, Alert, Drawer, Chip,
+  Button, CircularProgress, Alert, Drawer, Chip, Checkbox, FormControlLabel,
   useTheme, useMediaQuery,
 } from '@mui/material';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import ClearIcon from '@mui/icons-material/Clear';
+import SelectAllIcon from '@mui/icons-material/SelectAll';
+import DeselectIcon from '@mui/icons-material/Deselect';
 import { alpha } from '@mui/material/styles';
 import { Grid } from '@mui/material';
 import { useState, useCallback, useEffect } from 'react';
@@ -210,6 +212,86 @@ export const AlbumPage = () => {
           )}
           {error && !loading && (
             <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>{error}</Alert>
+          )}
+
+          {/* 選択モード：全選択バー */}
+          {isSelectMode && !loading && filteredPhotos.length > 0 && (
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                mb: 1.5,
+                px: 1,
+                py: 0.75,
+                borderRadius: 2,
+                background: alpha('#1e1b4b', 0.6),
+                border: `1px solid ${alpha('#a78bfa', 0.2)}`,
+                flexWrap: 'wrap',
+              }}
+            >
+              <FormControlLabel
+                sx={{ m: 0 }}
+                control={
+                  <Checkbox
+                    size="small"
+                    checked={selectedIds.size === filteredPhotos.length}
+                    indeterminate={selectedIds.size > 0 && selectedIds.size < filteredPhotos.length}
+                    onChange={(e) =>
+                      e.target.checked
+                        ? selectAll(filteredPhotos.map((p) => p.photoId))
+                        : clearSelection()
+                    }
+                    sx={{
+                      color: alpha('#a78bfa', 0.5),
+                      '&.Mui-checked': { color: '#a78bfa' },
+                      '&.MuiCheckbox-indeterminate': { color: '#a78bfa' },
+                    }}
+                  />
+                }
+                label={
+                  <Typography variant="body2" color={selectedIds.size > 0 ? '#c4b5fd' : 'text.secondary'}>
+                    {selectedIds.size > 0
+                      ? `${selectedIds.size} / ${filteredPhotos.length} 枚選択中`
+                      : `${filteredPhotos.length} 枚`}
+                  </Typography>
+                }
+              />
+              <Box sx={{ display: 'flex', gap: 1, ml: 'auto' }}>
+                <Button
+                  size="small"
+                  startIcon={<SelectAllIcon sx={{ fontSize: 16 }} />}
+                  onClick={() => selectAll(filteredPhotos.map((p) => p.photoId))}
+                  disabled={selectedIds.size === filteredPhotos.length}
+                  sx={{
+                    color: '#a78bfa',
+                    borderColor: alpha('#a78bfa', 0.4),
+                    fontSize: '0.75rem',
+                    '&:hover': { background: alpha('#a78bfa', 0.1) },
+                    '&.Mui-disabled': { color: alpha('#a78bfa', 0.3) },
+                  }}
+                  variant="outlined"
+                >
+                  全て選択
+                </Button>
+                <Button
+                  size="small"
+                  startIcon={<DeselectIcon sx={{ fontSize: 16 }} />}
+                  onClick={clearSelection}
+                  disabled={selectedIds.size === 0}
+                  sx={{
+                    color: 'text.secondary',
+                    borderColor: alpha('#ffffff', 0.15),
+                    fontSize: '0.75rem',
+                    '&:hover': { background: alpha('#ffffff', 0.05) },
+                    '&.Mui-disabled': { color: alpha('#ffffff', 0.2) },
+                  }}
+                  variant="outlined"
+                >
+                  全て解除
+                </Button>
+              </Box>
+            </Box>
           )}
 
           {!loading && filteredPhotos.length === 0 ? (

@@ -74,6 +74,91 @@ export const convertHeic = async (file: File, format: ConvertFormat = 'none'): P
   return new File([blob], newName, { type: FORMAT_MIME[fmt] });
 };
 
+import type { OutputFormat } from '../types';
+
+const OUTPUT_MIME: Record<OutputFormat, string> = {
+  jpeg: 'image/jpeg',
+  webp: 'image/webp',
+};
+const OUTPUT_EXT: Record<OutputFormat, string> = {
+  jpeg: '.jpg',
+  webp: '.webp',
+};
+const OUTPUT_QUALITY: Record<OutputFormat, number> = {
+  jpeg: 0.85,
+  webp: 0.80,
+};
+
+/** 指定ファイルが保存フォーマットと一致しているか判定する */
+export const matchesOutputFormat = (file: File, outputFormat: OutputFormat): boolean => {
+  if (outputFormat === 'jpeg') {
+    return file.type === 'image/jpeg' || /\.(jpg|jpeg)$/i.test(file.name);
+  }
+  return file.type === 'image/webp' || /\.webp$/i.test(file.name);
+};
+
+/**
+ * ファイルを保存フォーマットに変換して返す。
+ * すでに一致しているファイルはそのまま返す（変換コストなし）。
+ * - HEIC: heic2any を使用
+ * - PNG / WebP 他: Canvas API を使用
+ */
+export const convertToOutputFormat = async (file: File, outputFormat: OutputFormat): Promise<File> => {
+  // すでに正しいフォーマット → そのまま返す
+  if (matchesOutputFormat(file, outputFormat)) return file;
+
+  const mime    = OUTPUT_MIME[outputFormat];
+  const ext     = OUTPUT_EXT[outputFormat];
+  const quality = OUTPUT_QUALITY[outputFormat];
+  const baseName = file.name.replace(/\.[^.]+$/, '');
+
+  // HEIC → heic2any で変換
+  if (/\.heic$/i.test(file.name) || file.type === 'image/heic') {
+    const heic2any = await loadHeic2any();
+    const converted = await heic2any({ blob: file, toType: mime, quality });
+    const blob = Array.isArray(converted) ? converted[0] : converted;
+    return new File([blob], baseName + ext, { type: mime });
+  }
+
+  // PNG / WebP 他 → Canvas API で変換
+  const bitmap = await createImageBitmap(file);
+  const canvas = document.createElement('canvas');
+  canvas.width  = bitmap.width;
+  canvas.height = bitmap.height;
+  const ctx = canvas.getContext('2d')!;
+
+  // JPEG はアルファ非対応のため白背景に合成する
+  if (outputFormat === 'jpeg') {
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+  ctx.drawImage(bitmap, 0, 0);
+  bitmap.close();
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) { reject(new Error(`${file.name} の変換に失敗しました`)); return; }
+        resolve(new File([blob], baseName + ext, { type: mime }));
+      },
+      mime,
+      quality,
+    );
+  });
+};
+
+// ─── ファイル日時 ──────────────────────────────────────────────
+
+/**
+ * File の最終更新日時を datetime-local 形式（"YYYY-MM-DDTHH:MM"）で返す。
+ * EXIF がない場合のフォールバックとして使用する。
+ */
+export const fileLastModified = (file: File): string => {
+  const d = new Date(file.lastModified);
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+};
+
 // ─── EXIF 撮影日時読み取り ──────────────────────────────────────
 
 /**

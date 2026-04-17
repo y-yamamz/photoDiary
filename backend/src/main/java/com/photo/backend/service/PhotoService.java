@@ -1,5 +1,8 @@
 package com.photo.backend.service;
 
+import com.drew.imaging.ImageMetadataReader;
+import com.drew.metadata.Metadata;
+import com.drew.metadata.exif.ExifSubIFDDirectory;
 import com.photo.backend.common.exception.AppException;
 import com.photo.backend.db.entity.Photos;
 import com.photo.backend.db.entity.PhotosExample;
@@ -13,8 +16,14 @@ import com.photo.backend.dto.request.PhotoBulkDeleteRequest;
 import com.photo.backend.dto.request.PhotoBulkUpdateRequest;
 import com.photo.backend.dto.request.PhotoUpdateRequest;
 import com.photo.backend.dto.response.PhotoResponse;
+import net.coobird.thumbnailator.Thumbnails;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import javax.imageio.ImageIO;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -94,6 +103,10 @@ public class PhotoService {
      */
     private final String storagePath;
 
+    /** JPEG 圧縮品質（0.0〜1.0）。application.yml の {@code image.compression.jpeg-quality} から注入。 */
+    @Value("${image.compression.jpeg-quality:0.85}")
+    private double jpegQuality;
+
     /**
      * コンストラクタインジェクション。
      * Spring がマッパーとストレージパスを自動注入する。
@@ -144,38 +157,57 @@ public class PhotoService {
      *
      * <p>処理の流れ：
      * <ol>
-     *   <li>takenAt（撮影日時）を基準にディレクトリを決定してファイルを保存する</li>
+     *   <li>EXIF から撮影日時を抽出し、takenAt が未指定の場合に自動適用する</li>
+     *   <li>takenAt（撮影日時）を基準にディレクトリを決定し、指定フォーマットに変換・圧縮して保存する</li>
      *   <li>メタデータ（撮影日時・場所・説明・グループ）を含む {@link Photos} エンティティを生成する</li>
      *   <li>DBにINSERTして採番されたphotoIdを使い、登録後のレコードを取得して返す</li>
      * </ol>
      *
-     * @param userId      ログインユーザーID
-     * @param file        アップロードされたファイル
-     * @param groupId     所属グループID（nullable: グループなしの場合はnull）
-     * @param takenAt     撮影日時文字列（nullable: "yyyy-MM-dd'T'HH:mm" 形式）
-     * @param location    撮影場所（nullable）
-     * @param description 写真の説明（nullable）
+     * @param userId       ログインユーザーID
+     * @param file         アップロードされたファイル
+     * @param groupId      所属グループID（nullable: グループなしの場合はnull）
+     * @param takenAt      撮影日時文字列（nullable: "yyyy-MM-dd'T'HH:mm" 形式）
+     * @param location     撮影場所（nullable）
+     * @param description  写真の説明（nullable）
+     * @param outputFormat 出力フォーマット（"jpeg" or "webp"、未指定時は "jpeg"）
      * @return 登録後の写真情報（タグなし）
      */
     public PhotoResponse upload(Long userId, MultipartFile file,
                                 Long groupId, String takenAt,
-                                String location, String description) {
+                                String location, String description,
+                                String outputFormat) {
         // 容量上限チェック（保存前に確認する）
         checkStorageCapacity(userId, file.getSize());
 
-        // 撮影日時を基準にディレクトリを決定してファイルを保存する
-        String filePath = saveFile(file, userId, takenAt);
+        // InputStream を一度だけ読み込む（EXIF 抽出と変換の両方で使い回す）
+        byte[] fileBytes;
+        try {
+            fileBytes = file.getBytes();
+        } catch (IOException e) {
+            throw new AppException(HttpStatus.INTERNAL_SERVER_ERROR, "ファイルの読み込みに失敗しました");
+        }
+
+        // takenAt 未指定の場合は EXIF から撮影日時を自動取得する
+        String resolvedTakenAt = (takenAt != null && !takenAt.isBlank())
+                ? takenAt
+                : extractExifTakenAt(fileBytes, file.getOriginalFilename());
+
+        // 出力フォーマットを正規化する（不正値は jpeg にフォールバック）
+        String format = resolveFormat(outputFormat);
+
+        // 指定フォーマットに変換・圧縮してファイルを保存する
+        SaveResult saved = saveFile(fileBytes, file.getOriginalFilename(), userId, resolvedTakenAt, format);
 
         // メタデータと保存パスからエンティティを組み立ててDBに登録する
-        Photos photo = buildPhoto(userId, file.getOriginalFilename(), filePath,
-                groupId, takenAt, location, description);
+        Photos photo = buildPhoto(userId, saved.fileName(), saved.filePath(),
+                groupId, resolvedTakenAt, location, description);
         photosMapper.insertSelective(photo);
 
         // INSERT後に採番されたphotoIdでレコードを再取得して返す（タグなし）
         PhotoResponse result = toSimpleResponse(photosMapper.selectByPrimaryKey(photo.getPhotoId()));
 
-        // ファイル保存・DB登録成功後に使用量を加算する
-        usersCustomMapper.addStorageUsed(userId, file.getSize());
+        // 変換後の実ファイルサイズで使用量を加算する
+        usersCustomMapper.addStorageUsed(userId, saved.fileSize());
 
         return result;
     }
@@ -189,37 +221,53 @@ public class PhotoService {
      * 1件でもファイル保存に失敗した場合は {@link AppException} がスローされ、
      * それ以降のファイルは処理されない（部分登録になりうる点に注意）。
      *
-     * <p>撮影日時（takenAt）は全ファイルに共通の値を適用する。
-     * 各ファイルに個別の日付を登録したい場合は {@link #upload} を繰り返し呼ぶこと。
+     * <p>takenAt が未指定の場合、各ファイルの EXIF から個別に撮影日時を取得する。
+     * takenAt が指定されている場合は全ファイルに共通適用する。
      *
-     * @param userId      ログインユーザーID
-     * @param files       アップロードされたファイルのリスト
-     * @param groupId     所属グループID（nullable）
-     * @param takenAt     撮影日時文字列（nullable: 全ファイルに共通適用）
-     * @param location    撮影場所（nullable）
-     * @param description 写真の説明（nullable）
+     * @param userId       ログインユーザーID
+     * @param files        アップロードされたファイルのリスト
+     * @param groupId      所属グループID（nullable）
+     * @param takenAt      撮影日時文字列（nullable: 指定時は全ファイルに共通適用）
+     * @param location     撮影場所（nullable）
+     * @param description  写真の説明（nullable）
+     * @param outputFormat 出力フォーマット（"jpeg" or "webp"、未指定時は "jpeg"）
      * @return 登録後の写真情報リスト（各エントリはタグなし）
      */
     public List<PhotoResponse> bulkUpload(Long userId, List<MultipartFile> files,
                                           Long groupId, String takenAt,
-                                          String location, String description) {
+                                          String location, String description,
+                                          String outputFormat) {
         // 一括アップロード前に合計サイズで上限チェックを行う
         long totalSize = files.stream().mapToLong(MultipartFile::getSize).sum();
         checkStorageCapacity(userId, totalSize);
 
+        String format = resolveFormat(outputFormat);
+
         List<PhotoResponse> results = new ArrayList<>();
         long savedSize = 0;
         for (MultipartFile file : files) {
-            // 撮影日時を基準にディレクトリを決定してファイルを保存する
-            String filePath = saveFile(file, userId, takenAt);
-            Photos photo = buildPhoto(userId, file.getOriginalFilename(), filePath,
-                    groupId, takenAt, location, description);
+            // InputStream を一度だけ読み込む（EXIF 抽出と変換の両方で使い回す）
+            byte[] fileBytes;
+            try {
+                fileBytes = file.getBytes();
+            } catch (IOException e) {
+                throw new AppException(HttpStatus.INTERNAL_SERVER_ERROR, "ファイルの読み込みに失敗しました: " + file.getOriginalFilename());
+            }
+
+            // takenAt 未指定の場合はファイルごとに EXIF から撮影日時を取得する
+            String resolvedTakenAt = (takenAt != null && !takenAt.isBlank())
+                    ? takenAt
+                    : extractExifTakenAt(fileBytes, file.getOriginalFilename());
+
+            SaveResult saved = saveFile(fileBytes, file.getOriginalFilename(), userId, resolvedTakenAt, format);
+            Photos photo = buildPhoto(userId, saved.fileName(), saved.filePath(),
+                    groupId, resolvedTakenAt, location, description);
             photosMapper.insertSelective(photo);
             results.add(toSimpleResponse(photosMapper.selectByPrimaryKey(photo.getPhotoId())));
-            savedSize += file.getSize();
+            savedSize += saved.fileSize();
         }
 
-        // 全ファイル保存・DB登録成功後にまとめて使用量を加算する
+        // 全ファイル保存・DB登録成功後にまとめて使用量を加算する（変換後の実サイズ）
         if (savedSize > 0) {
             usersCustomMapper.addStorageUsed(userId, savedSize);
         }
@@ -396,13 +444,12 @@ public class PhotoService {
     // ── private ─────────────────────────────────────────────────
 
     /**
-     * アップロードされたファイルをストレージに保存し、DBに記録するパスを返す。
+     * アップロードされたファイルを指定フォーマットに変換・圧縮してストレージに保存する。
      *
      * <p>保存先ディレクトリ構造：
      * <pre>
      *   {storagePath}/{userId}/{yyyy}/{MM}/{dd}/
      * </pre>
-     * ディレクトリが存在しない場合は自動的に作成する。
      *
      * <p>日付の決定ルール：
      * <ul>
@@ -412,7 +459,7 @@ public class PhotoService {
      *
      * <p>ファイル名のルール：
      * <ul>
-     *   <li>拡張子は元ファイルの拡張子を維持する</li>
+     *   <li>拡張子は出力フォーマットで決まる（元の拡張子は使わない）</li>
      *   <li>ベース名は元ファイルのベース名を維持する</li>
      *   <li>同名ファイルが既に存在する場合は "_1", "_2", ... を付けて回避する</li>
      * </ul>
@@ -420,32 +467,22 @@ public class PhotoService {
      * @param file    保存対象のアップロードファイル
      * @param userId  ファイルの所有ユーザーID（ディレクトリ分離に使用）
      * @param takenAt 撮影日時文字列（"yyyy-MM-dd'T'HH:mm" 形式）。null の場合は現在時刻を使用
-     * @return クライアントがアクセスするためのURLパス（例: "/images/1/2026/04/10/photo.jpg"）
+     * @param format  出力フォーマット（"jpeg" or "webp"）
+     * @return 保存結果（URLパス・ファイル名・実ファイルサイズ）
      * @throws AppException ファイルの保存に失敗した場合（HTTP 500）
      */
-    private String saveFile(MultipartFile file, Long userId, String takenAt) {
+    private SaveResult saveFile(byte[] fileBytes, String originalFilename, Long userId, String takenAt, String format) {
         try {
-            // takenAt が指定されていればその日付を使用し、なければ現在日時をフォールバックとして使用する
-            LocalDateTime baseDate;
-            if (takenAt != null && !takenAt.isBlank()) {
-                try {
-                    baseDate = LocalDateTime.parse(takenAt, DTF);
-                } catch (Exception e) {
-                    // パース失敗時は現在日時を使用する
-                    baseDate = LocalDateTime.now();
-                }
-            } else {
-                baseDate = LocalDateTime.now();
-            }
-
+            LocalDateTime baseDate = resolveBaseDate(takenAt);
             String year     = String.format("%04d", baseDate.getYear());
             String month    = String.format("%02d", baseDate.getMonthValue());
             String day      = String.format("%02d", baseDate.getDayOfMonth());
-            String ext      = getExtension(file.getOriginalFilename());
-            String baseName = getBaseName(file.getOriginalFilename());
+
+            // 拡張子は出力フォーマットで決まる（元の拡張子は使わない）
+            String ext      = "webp".equals(format) ? ".webp" : ".jpg";
+            String baseName = getBaseName(originalFilename);
 
             // 保存先ディレクトリ: {storagePath}/{userId}/{yyyy}/{MM}/{dd}/
-            // Files.createDirectories は既存ディレクトリに対しても例外を投げないため安全に呼び出せる
             Path dir = Paths.get(storagePath, userId.toString(), year, month, day);
             Files.createDirectories(dir);
 
@@ -459,17 +496,129 @@ public class PhotoService {
                 dest = dir.resolve(baseName + "_" + count + ext);
             }
 
-            // MultipartFile をディスクに書き出す
-            file.transferTo(dest);
+            // 指定フォーマットに変換・圧縮して保存する
+            convertAndSave(fileBytes, dest, format);
 
-            // クライアントからアクセス可能な URL パスを組み立てて返す
             String savedName = dest.getFileName().toString();
-            return "/images/" + userId + "/" + year + "/" + month + "/" + day + "/" + savedName;
+            String urlPath   = "/images/" + userId + "/" + year + "/" + month + "/" + day + "/" + savedName;
+            long   fileSize  = Files.size(dest);
+
+            return new SaveResult(urlPath, savedName, fileSize);
 
         } catch (IOException e) {
+            log.error("[saveFile] 保存失敗: originalFilename={} format={} error={}", originalFilename, format, e.getMessage(), e);
             throw new AppException(HttpStatus.INTERNAL_SERVER_ERROR, "ファイルの保存に失敗しました");
         }
     }
+
+    /**
+     * 画像を指定フォーマットに変換・圧縮してファイルに書き出す。
+     *
+     * @param file   アップロードファイル
+     * @param dest   書き出し先パス
+     * @param format "jpeg" or "webp"
+     * @throws IOException 変換・書き出し失敗時
+     */
+    private void convertAndSave(byte[] fileBytes, Path dest, String format) throws IOException {
+        // WebP: フロントエンドで変換・圧縮済みのバイト列をそのまま保存する
+        // （Java 標準の ImageIO は WebP エンコーダを持たないため、バイトを直接書き出す）
+        if ("webp".equals(format)) {
+            Files.write(dest, fileBytes);
+            return;
+        }
+
+        // JPEG: ImageIO で読み込んで Thumbnailator で圧縮保存する
+        BufferedImage image = ImageIO.read(new ByteArrayInputStream(fileBytes));
+        if (image == null) {
+            throw new IOException("画像の読み込みに失敗しました（未対応フォーマットの可能性があります）");
+        }
+
+        // PNG などアルファチャンネルを持つ画像は白背景へ合成する
+        // （JPEG はアルファ非対応のため、そのまま変換するとエラーになる）
+        if (image.getColorModel().hasAlpha()) {
+            BufferedImage rgb = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_RGB);
+            Graphics2D g = rgb.createGraphics();
+            g.setColor(Color.WHITE);
+            g.fillRect(0, 0, image.getWidth(), image.getHeight());
+            g.drawImage(image, 0, 0, null);
+            g.dispose();
+            image = rgb;
+        }
+
+        // toOutputStream を使う（toFile はファイル名から拡張子を自動付加するため使わない）
+        try (java.io.FileOutputStream fos = new java.io.FileOutputStream(dest.toFile())) {
+            Thumbnails.of(image)
+                    .scale(1.0)
+                    .outputFormat("jpg")
+                    .outputQuality(jpegQuality)
+                    .toOutputStream(fos);
+        }
+    }
+
+    /**
+     * takenAt 文字列から保存先ディレクトリ用の日付を決定する。
+     * null または空文字の場合は現在日時を返す。
+     *
+     * @param takenAt 撮影日時文字列（"yyyy-MM-dd'T'HH:mm" 形式）
+     * @return ディレクトリ算出に使用する日時
+     */
+    private LocalDateTime resolveBaseDate(String takenAt) {
+        if (takenAt != null && !takenAt.isBlank()) {
+            try {
+                return LocalDateTime.parse(takenAt, DTF);
+            } catch (Exception e) {
+                // パース失敗時は現在日時を使用する
+            }
+        }
+        return LocalDateTime.now();
+    }
+
+    /**
+     * アップロードファイルの EXIF から撮影日時（DateTimeOriginal）を抽出する。
+     * EXIF がない・読み取れない場合は null を返す。
+     *
+     * @param file アップロードファイル
+     * @return 撮影日時文字列（"yyyy-MM-dd'T'HH:mm" 形式）。取得できない場合は null
+     */
+    private String extractExifTakenAt(byte[] fileBytes, String originalFilename) {
+        try {
+            Metadata metadata = ImageMetadataReader.readMetadata(new ByteArrayInputStream(fileBytes));
+            ExifSubIFDDirectory dir = metadata.getFirstDirectoryOfType(ExifSubIFDDirectory.class);
+            if (dir == null) return null;
+
+            Date date = dir.getDate(ExifSubIFDDirectory.TAG_DATETIME_ORIGINAL);
+            if (date == null) return null;
+
+            String result = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm").format(date);
+            log.debug("[extractExifTakenAt] EXIF撮影日時を取得: {} -> {}", originalFilename, result);
+            return result;
+
+        } catch (Exception e) {
+            // EXIF なし・読み取り失敗はスキップ（正常系）
+            log.debug("[extractExifTakenAt] EXIF取得スキップ: {} / {}", originalFilename, e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * outputFormat 文字列を正規化する。
+     * "webp" 以外はすべて "jpeg" として扱う。
+     *
+     * @param outputFormat リクエストから受け取ったフォーマット文字列
+     * @return "jpeg" or "webp"
+     */
+    private String resolveFormat(String outputFormat) {
+        return "webp".equalsIgnoreCase(outputFormat) ? "webp" : "jpeg";
+    }
+
+    /**
+     * saveFile の戻り値を格納するレコード。
+     *
+     * @param filePath クライアントがアクセスするURLパス（例: "/images/1/2026/04/10/photo.jpg"）
+     * @param fileName 保存後のファイル名（例: "photo.jpg"）
+     * @param fileSize 変換後の実ファイルサイズ（bytes）
+     */
+    private record SaveResult(String filePath, String fileName, long fileSize) {}
 
     /**
      * 物理ファイルを新しい撮影日時に対応するディレクトリへ移動し、新しいURLパスを返す。
@@ -546,6 +695,7 @@ public class PhotoService {
 
     /**
      * DBの filePath（例: "/images/1/2026/04/10/photo.jpg"）に対応する物理ファイルを削除する。
+     * ファイル削除後、空になった親ディレクトリを storagePath に達するまで遡って削除する。
      *
      * <p>パス変換ルール：
      * <pre>
@@ -566,9 +716,54 @@ public class PhotoService {
         try {
             // ファイルが存在しない場合も例外を投げない deleteIfExists を使用する
             Files.deleteIfExists(physical);
+            // ファイル削除後、空になった親ディレクトリを遡って削除する
+            deleteEmptyParentDirs(physical);
         } catch (IOException e) {
             // 物理ファイルの削除失敗はログ出力のみとし、DB削除の結果には影響させない
-            System.err.println("物理ファイルの削除に失敗しました: " + physical + " / " + e.getMessage());
+            log.warn("[deletePhysicalFile] ファイル削除失敗: {} / {}", physical, e.getMessage());
+        }
+    }
+
+    /**
+     * 指定ファイルの親ディレクトリから storagePath に向かって、
+     * 空ディレクトリを順に削除する。
+     *
+     * <p>ディレクトリ構造: {storagePath}/{userId}/{yyyy}/{MM}/{dd}/
+     * ファイルを削除した後、dd → MM → yyyy → userId の順に空であれば削除する。
+     * storagePath 自体は削除しない。
+     *
+     * @param filePath 削除したファイルの物理パス
+     */
+    private void deleteEmptyParentDirs(Path filePath) {
+        Path storageRoot = Paths.get(storagePath).toAbsolutePath().normalize();
+        Path dir = filePath.getParent();
+
+        while (dir != null) {
+            Path normalizedDir = dir.toAbsolutePath().normalize();
+            // storagePath に達したら終了（storagePath 自体は削除しない）
+            if (normalizedDir.equals(storageRoot)) break;
+            // storagePath の外に出た場合も終了（安全策）
+            if (!normalizedDir.startsWith(storageRoot)) break;
+            // ユーザーIDフォルダ（storagePath の直下）は削除しない
+            if (normalizedDir.getParent().toAbsolutePath().normalize().equals(storageRoot)) break;
+
+            try {
+                // ディレクトリが空かどうか確認する
+                boolean isEmpty;
+                try (java.util.stream.Stream<Path> entries = Files.list(dir)) {
+                    isEmpty = entries.findFirst().isEmpty();
+                }
+                if (isEmpty) {
+                    Files.delete(dir);
+                    log.debug("[deleteEmptyParentDirs] 空ディレクトリを削除: {}", dir);
+                    dir = dir.getParent(); // 1つ上の階層へ
+                } else {
+                    break; // 空でなければ終了
+                }
+            } catch (IOException e) {
+                log.warn("[deleteEmptyParentDirs] ディレクトリ削除失敗: {} / {}", dir, e.getMessage());
+                break;
+            }
         }
     }
 
@@ -751,7 +946,7 @@ public class PhotoService {
         Photos photo = new Photos();
         photo.setUserId(userId);
         photo.setFilePath(filePath);
-        photo.setFileName(originalName);
+        photo.setFileName(originalName);  // 呼び出し元で変換後のファイル名を渡すこと
         photo.setGroupId(groupId);
         photo.setLocation(location);
         photo.setDescription(description);
